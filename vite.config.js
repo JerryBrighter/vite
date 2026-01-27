@@ -8,6 +8,7 @@ export default defineConfig({
     port: 3000,
     open: true // 启动时自动打开浏览器
   },
+  base: '/vite/', // 必须和仓库名一致，不能错！
   // 构建配置
   build: {
     outDir: 'dist',

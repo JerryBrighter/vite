@@ -80,6 +80,10 @@ let detectedControlEncoding = ''; // DemControl文件检测到的编码
 let currentPage = 1;
 const ITEMS_PER_PAGE = 20;
 
+// 时间范围相关变量
+let selectedTimeRange = null; // 存储用户选择的时间范围
+let originalChartData = []; // 存储原始图表数据，用于时间范围重置
+
 // 图表颜色方案（支持多列）
 const chartColors = [
   { border: '#0d6efd', background: 'rgba(13, 110, 253, 0.1)' },
@@ -134,8 +138,30 @@ controlFileUploadArea.addEventListener('click', function(e) {
   clearAllBtn.addEventListener('click', clearAllFiles);
   timeSelectorSelect.addEventListener('change', handleTimeSelectChange);
   
+  // 时间范围选择器事件绑定
+  const applyTimeRangeBtn = document.getElementById('applyTimeRangeBtn');
+  const resetTimeRangeBtn = document.getElementById('resetTimeRangeBtn');
+  const autoTimeRangeBtn = document.getElementById('autoTimeRangeBtn');
+  const xAxisSelect = document.getElementById('xAxisSelect');
+  
+  if (applyTimeRangeBtn) {
+    applyTimeRangeBtn.addEventListener('click', applyTimeRange);
+  }
+  if (resetTimeRangeBtn) {
+    resetTimeRangeBtn.addEventListener('click', resetTimeRange);
+  }
+  if (autoTimeRangeBtn) {
+    autoTimeRangeBtn.addEventListener('click', autoTimeRange);
+  }
+  if (xAxisSelect) {
+    xAxisSelect.addEventListener('change', updateTimeRangeSelectorVisibility);
+  }
+  
   // 初始化表格显示/隐藏切换功能
   initTableToggle();
+  
+  // 初始化时间范围选择器
+  initTimeRangeSelector();
 });
 
 // ========== 拖拽处理函数（完整修复版） ==========
@@ -172,10 +198,10 @@ function handleDrop(e, type) {
     return;
   }
   
-  // 核心修复2：严格校验CSV文件
+  // 核心修复2：严格校验CSV或DAT文件
   const file = files[0];
-  if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
-    updateStatus(`❌ 请上传有效的CSV文件（当前文件：${file.name}）`, 'danger');
+  if (!file.name.endsWith('.csv') && !file.name.endsWith('.dat') && file.type !== 'text/csv') {
+    updateStatus(`❌ 请上传有效的CSV或DAT文件（当前文件：${file.name}）`, 'danger');
     return;
   }
   
@@ -426,8 +452,12 @@ function parseDemDecFileWithSelectedEncoding() {
   // 如果选择自动识别，使用检测到的编码
   const finalEncoding = selectedEncoding === 'auto' ? detectedDataEncoding || 'utf8' : selectedEncoding;
   
-  // 显示最终使用的编码
-  updateStatus(`📝 正在使用${selectedEncoding === 'auto' ? `自动检测(${finalEncoding})` : finalEncoding}编码解析文件：${demDecFileName}`, 'primary');
+  // 检测文件类型和分隔符
+  const isDatFile = demDecFileName.toLowerCase().endsWith('.dat');
+  const delimiter = isDatFile ? '\t' : ',';
+  
+  // 显示最终使用的编码和文件类型
+  updateStatus(`📝 正在使用${selectedEncoding === 'auto' ? `自动检测(${finalEncoding})` : finalEncoding}编码解析文件：${demDecFileName} (${isDatFile ? 'DAT格式，TAB分隔' : 'CSV格式，逗号分隔'})`, 'primary');
   
   try {
     let csvContent = '';
@@ -455,14 +485,14 @@ function parseDemDecFileWithSelectedEncoding() {
     // 修复行分割逻辑
     const rows = csvContent.split(/\r?\n/).filter(row => row.trim() !== '');
     
-    if (rows.length < 2) throw new Error('CSV文件数据不足（至少需要1行标题+1行数据）');
+    if (rows.length < 2) throw new Error(`${isDatFile ? 'DAT' : 'CSV'}文件数据不足（至少需要1行标题+1行数据）`);
 
     // 判断文件是否包含时间列（检查前10行）
     function hasTimeColumn() {
-      const timeRegex = /^\d{4}[-/]?\d{2}[-/]?\d{2}\s?\d{2}[:.]?\d{2}[:.]?\d{2}$/;
+      const timeRegex = /^\d{4}[-/]?\d{2}[-/]?\d{2}\s?\d{2}[:.]?\d{2}[:.]?\d{2}[:.]?\d{0,3}$|^\d{2}[:.]?\d{2}[:.]?\d{2}[:.]?\d{0,3}$/;
       const checkRows = rows.slice(0, Math.min(10, rows.length));
       for (const row of checkRows) {
-        const parsedRow = parseCSVLine(row);
+        const parsedRow = parseCSVLine(row, delimiter);
         for (const cell of parsedRow) {
           const value = cell?.trim();
           if (value && (timeRegex.test(value) || !isNaN(new Date(value).getTime()))) {
@@ -475,13 +505,13 @@ function parseDemDecFileWithSelectedEncoding() {
 
     // 判断一行是否为时间值
     function isTimeValue(value) {
-      const timeRegex = /^\d{4}[-/]?\d{2}[-/]?\d{2}\s?\d{2}[:.]?\d{2}[:.]?\d{2}$/;
+      const timeRegex = /^\d{4}[-/]?\d{2}[-/]?\d{2}\s?\d{2}[:.]?\d{2}[:.]?\d{2}[:.]?\d{0,3}$|^\d{2}[:.]?\d{2}[:.]?\d{2}[:.]?\d{0,3}$/;
       return value && (timeRegex.test(value) || !isNaN(new Date(value).getTime()));
     }
 
     // 判断一行是否为标题行
     function isHeaderRow(row) {
-      const parsedRow = parseCSVLine(row);
+      const parsedRow = parseCSVLine(row, delimiter);
       let hasNumber = false;
       let hasTime = false;
       
@@ -512,22 +542,29 @@ function parseDemDecFileWithSelectedEncoding() {
     // 自动判断标题行数量
     const fileHasTimeColumn = hasTimeColumn();
     let headerRowCount = 0;
-    for (let i = 0; i < Math.min(5, rows.length - 1); i++) {
-      if (isHeaderRow(rows[i])) {
-        headerRowCount++;
-      } else {
-        break;
+    
+    // 对于DAT文件，强制只使用第一行作为标题行
+    if (isDatFile) {
+      headerRowCount = 1;
+    } else {
+      // 对于CSV文件，自动判断标题行数量
+      for (let i = 0; i < Math.min(5, rows.length - 1); i++) {
+        if (isHeaderRow(rows[i])) {
+          headerRowCount++;
+        } else {
+          break;
+        }
       }
     }
 
     // 修复标题行处理逻辑
     let headerRows = rows.slice(0, headerRowCount);
-    const parsedHeaderRows = headerRows.map(row => parseCSVLine(row));
+    const parsedHeaderRows = headerRows.map(row => parseCSVLine(row, delimiter));
     csvHeaders = mergeHeaderRows(parsedHeaderRows);
     
     // 数据行从标题行后开始
     const dataStartIndex = headerRowCount;
-    csvData = rows.slice(dataStartIndex).map(row => parseCSVLine(row)).filter(row => row.length > 0);
+    csvData = rows.slice(dataStartIndex).map(row => parseCSVLine(row, delimiter)).filter(row => row.length > 0);
     
     // 空数据检查
     if (csvData.length === 0) throw new Error('未解析到有效数据行');
@@ -590,8 +627,12 @@ function parseDemControlFileWithSelectedEncoding() {
   // 如果选择自动识别，使用检测到的编码
   const finalEncoding = selectedEncoding === 'auto' ? detectedControlEncoding || 'utf8' : selectedEncoding;
   
-  // 显示最终使用的编码
-  updateStatus(`📅 正在使用${selectedEncoding === 'auto' ? `自动检测(${finalEncoding})` : finalEncoding}编码解析文件：${demControlFileName}`, 'primary');
+  // 检测文件类型和分隔符
+  const isDatFile = demControlFileName.toLowerCase().endsWith('.dat');
+  const delimiter = isDatFile ? '\t' : ',';
+  
+  // 显示最终使用的编码和文件类型
+  updateStatus(`📅 正在使用${selectedEncoding === 'auto' ? `自动检测(${finalEncoding})` : finalEncoding}编码解析文件：${demControlFileName} (${isDatFile ? 'DAT格式，TAB分隔' : 'CSV格式，逗号分隔'})`, 'primary');
   
   try {
     let csvContent = '';
@@ -612,7 +653,7 @@ function parseDemControlFileWithSelectedEncoding() {
     
     // 解析所有行的第一列时间
     for (let i = 0; i < rows.length; i++) {
-      const row = parseCSVLine(rows[i]);
+      const row = parseCSVLine(rows[i], delimiter);
       const timeStr = row[0]?.trim();
       if (!timeStr) continue;
       
@@ -681,22 +722,37 @@ function autoDetectEncoding(uint8Array, type) {
     content = content.substring(1); // 移除BOM
     detectedEncoding = 'utf8bom';
   } 
-  // 尝试GBK/GB2312
+  // 首先尝试UTF-8解码
   else {
     try {
-      // 使用我们已经实现的decodeBuffer函数尝试GBK解码
-      content = decodeBuffer(uint8Array, 'gbk');
-      // 验证是否为有效中文
-      if (content.match(/[\u4e00-\u9fa5]/) || content.length > 0) {
-        detectedEncoding = 'gbk';
+      // 尝试用UTF-8解码
+      const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+      content = utf8Decoder.decode(uint8Array);
+      // 如果UTF-8解码成功，检测是否包含中文字符
+      if (content.match(/[\u4e00-\u9fa5]/)) {
+        // 包含中文字符，可能是UTF-8编码的中文
+        detectedEncoding = 'utf8';
       } else {
-        content = decodeBuffer(uint8Array, 'utf8');
+        // 不包含中文字符，可能是ASCII或UTF-8编码的英文
         detectedEncoding = 'utf8';
       }
     } catch (e) {
-      // 最终降级到UTF-8
-      content = decodeBuffer(uint8Array, 'utf8');
-      detectedEncoding = 'utf8';
+      // UTF-8解码失败，尝试GBK解码
+      try {
+        content = decodeBuffer(uint8Array, 'gbk');
+        // 验证是否为有效中文
+        if (content.match(/[\u4e00-\u9fa5]/)) {
+          detectedEncoding = 'gbk';
+        } else {
+          // GBK解码也不包含中文，降级到UTF-8
+          content = decodeBuffer(uint8Array, 'utf8');
+          detectedEncoding = 'utf8';
+        }
+      } catch (e2) {
+        // 最终降级到UTF-8
+        content = decodeBuffer(uint8Array, 'utf8');
+        detectedEncoding = 'utf8';
+      }
     }
   }
   
@@ -851,7 +907,15 @@ function filterDataByDemControl() {
         const timeFormats = [
           rowTimeStr.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3 $4:$5:$6'),
           rowTimeStr.replace(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/, '$1/$2/$3 $4:$5:$6'),
-          rowTimeStr.replace(/(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/, '$1-$2-$3 $4:$5:$6')
+          rowTimeStr.replace(/(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/, '$1-$2-$3 $4:$5:$6'),
+          // 支持 21:42:29:450 格式（时:分:秒:毫秒）
+          rowTimeStr.replace(/(\d{2}):(\d{2}):(\d{2}):(\d{3})/, (match, hh, mm, ss, ms) => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hh}:${mm}:${ss}.${ms}`;
+          })
         ];
         
         for (const fmt of timeFormats) {
@@ -912,11 +976,37 @@ function drawLineChart() {
     return;
   }
 
-  // 提取X轴数据
+  // 提取X轴数据和时间值
   const xData = [];
+  const xTimeValues = []; // 存储解析后的时间值
   csvData.forEach(row => {
     const xValue = row[xColIndex]?.trim() || '';
     xData.push(xValue);
+    
+    // 尝试解析时间值
+    let timeValue = null;
+    try {
+      // 尝试不同的时间格式解析
+      let rowTime = new Date(xValue);
+      if (isNaN(rowTime.getTime())) {
+        // 尝试解析 21:42:29:450 格式
+        const timeMatch = xValue.match(/(\d{2}):(\d{2}):(\d{2}):(\d{3})/);
+        if (timeMatch) {
+          const [, hh, mm, ss, ms] = timeMatch;
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          rowTime = new Date(`${year}-${month}-${day} ${hh}:${mm}:${ss}.${ms}`);
+        }
+      }
+      if (!isNaN(rowTime.getTime())) {
+        timeValue = rowTime;
+      }
+    } catch (e) {
+      // 忽略时间解析错误
+    }
+    xTimeValues.push(timeValue);
   });
 
   // 提取多列Y轴数据
@@ -994,6 +1084,43 @@ function drawLineChart() {
     return;
   }
 
+  // 保存原始数据，用于时间范围重置
+  originalChartData = {
+    xData: [...xData],
+    xTimeValues: [...xTimeValues],
+    datasets: JSON.parse(JSON.stringify(datasets)),
+    xColIndex: xColIndex
+  };
+
+  // 应用时间范围过滤
+  let filteredXData = xData;
+  let filteredDatasets = datasets;
+  if (selectedTimeRange) {
+    const { start, end } = selectedTimeRange;
+    const filteredIndices = [];
+    
+    // 找出在时间范围内的数据索引
+    xTimeValues.forEach((timeValue, index) => {
+      if (timeValue && timeValue >= start && timeValue <= end) {
+        filteredIndices.push(index);
+      }
+    });
+    
+    // 过滤数据
+    if (filteredIndices.length > 0) {
+      filteredXData = filteredIndices.map(index => xData[index]);
+      filteredDatasets = datasets.map(dataset => {
+        const filteredData = filteredIndices.map(index => dataset.data[index]);
+        const filteredRowTextValues = filteredIndices.map(index => dataset.rowTextValues[index]);
+        return {
+          ...dataset,
+          data: filteredData,
+          rowTextValues: filteredRowTextValues
+        };
+      });
+    }
+  }
+
   // 销毁原有图表
   if (chartInstance) {
     chartInstance.destroy();
@@ -1018,8 +1145,8 @@ function drawLineChart() {
   chartInstance = new Chart(lineChart, {
     type: 'line',
     data: { 
-      labels: xData, 
-      datasets: datasets 
+      labels: filteredXData, 
+      datasets: filteredDatasets 
     },
     options: {
       responsive: true,
@@ -1105,6 +1232,13 @@ function drawLineChart() {
 
   // 启用导出按钮
   enableControls(['exportChartBtn']);
+  
+  // 更新时间范围选择器的可见性
+  updateTimeRangeSelectorVisibility();
+  
+  // 初始化时间范围选择器的默认值
+  initTimeRangeSelector();
+  
   updateStatus(`✅ 折线图绘制成功：X轴【${csvHeaders[xColIndex]?.trim() || '列'}】，Y轴共${yColIndexes.length}列，有效数据点${totalDataPoints}个`, 'success');
 }
 
@@ -1222,29 +1356,36 @@ function clearAllFiles() {
 }
 
 // ========== 辅助函数 ==========
-// 解析CSV行
-function parseCSVLine(line) {
-  // 增强CSV解析，支持带引号的字段
-  const result = [];
-  const regex = /(?:^|,)(?:"([^"]*)"|([^,]*))/g;
-  let match;
-  
+// 解析CSV或DAT行
+function parseCSVLine(line, delimiter = ',') {
   // 处理空行
   if (!line || line.trim() === '') {
     return [];
   }
   
-  while ((match = regex.exec(line)) !== null) {
-    let value = match[1] || match[2] || '';
-    // 移除多余的引号
-    value = value.replace(/^["']|["']$/g, '').trim();
-    result.push(value);
+  // 简单分割方法，支持带引号的字段
+  const result = [];
+  let currentField = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === delimiter && !inQuotes) {
+      // 移除多余的引号
+      currentField = currentField.replace(/^["']|["']$/g, '').trim();
+      result.push(currentField);
+      currentField = '';
+    } else {
+      currentField += char;
+    }
   }
   
-  // 处理最后一个字段后没有逗号的情况
-  if (result.length === 0) {
-    return [line.trim()];
-  }
+  // 添加最后一个字段
+  currentField = currentField.replace(/^["']|["']$/g, '').trim();
+  result.push(currentField);
   
   return result;
 }
@@ -1438,6 +1579,371 @@ function initAxisSelector() {
   xAxisSelect.disabled = false;
   yAxisSelect.disabled = false;
   drawChartBtn.disabled = false;
+}
+
+// 初始化时间范围选择器
+function initTimeRangeSelector() {
+  const timeRangeSelector = document.getElementById('timeRangeSelector');
+  const timeRangeStart = document.getElementById('timeRangeStart');
+  const timeRangeEnd = document.getElementById('timeRangeEnd');
+  
+  if (!timeRangeSelector || !timeRangeStart || !timeRangeEnd) return;
+  
+  // 检查是否有原始图表数据
+  if (!originalChartData || !originalChartData.xTimeValues) return;
+  
+  // 找出所有有效的时间值
+  const validTimeValues = originalChartData.xTimeValues.filter(time => time !== null);
+  if (validTimeValues.length === 0) return;
+  
+  // 格式化时间为datetime-local输入框支持的格式
+  const formatDateTimeLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  };
+  
+  // 如果用户已经选择了时间范围，保持用户的选择
+  if (selectedTimeRange) {
+    timeRangeStart.value = formatDateTimeLocal(selectedTimeRange.start);
+    timeRangeEnd.value = formatDateTimeLocal(selectedTimeRange.end);
+  } else {
+    // 否则设置默认时间范围为数据的最小和最大值
+    const minTime = new Date(Math.min(...validTimeValues.map(time => time.getTime())));
+    const maxTime = new Date(Math.max(...validTimeValues.map(time => time.getTime())));
+    timeRangeStart.value = formatDateTimeLocal(minTime);
+    timeRangeEnd.value = formatDateTimeLocal(maxTime);
+  }
+}
+
+// 更新时间范围选择器的可见性
+function updateTimeRangeSelectorVisibility() {
+  const timeRangeSelector = document.getElementById('timeRangeSelector');
+  if (!timeRangeSelector) return;
+  
+  // 检查X轴是否选择了时间相关列
+  const xColIndex = parseInt(xAxisSelect.value);
+  if (isNaN(xColIndex) || xColIndex >= csvHeaders.length) {
+    timeRangeSelector.classList.add('d-none');
+    return;
+  }
+  
+  const xHeader = csvHeaders[xColIndex]?.trim() || '';
+  const isTimeCol = isTimeColumn(xHeader);
+  
+  // 检查是否有有效的时间数据
+  const hasValidTimeData = originalChartData && 
+                          originalChartData.xTimeValues && 
+                          originalChartData.xTimeValues.some(time => time !== null);
+  
+  if (isTimeCol && hasValidTimeData) {
+    timeRangeSelector.classList.remove('d-none');
+  } else {
+    timeRangeSelector.classList.add('d-none');
+  }
+}
+
+// 应用时间范围
+function applyTimeRange() {
+  const timeRangeStart = document.getElementById('timeRangeStart');
+  const timeRangeEnd = document.getElementById('timeRangeEnd');
+  
+  if (!timeRangeStart || !timeRangeEnd) return;
+  
+  const startTimeStr = timeRangeStart.value;
+  const endTimeStr = timeRangeEnd.value;
+  
+  if (!startTimeStr || !endTimeStr) {
+    updateStatus(`❌ 请选择完整的时间范围`, 'danger');
+    return;
+  }
+  
+  const startTime = new Date(startTimeStr);
+  const endTime = new Date(endTimeStr);
+  
+  if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+    updateStatus(`❌ 时间格式错误`, 'danger');
+    return;
+  }
+  
+  if (startTime > endTime) {
+    updateStatus(`❌ 开始时间不能晚于结束时间`, 'danger');
+    return;
+  }
+  
+  // 保存选择的时间范围
+  selectedTimeRange = { start: startTime, end: endTime };
+  
+  // 重新绘制图表
+  drawLineChart();
+  
+  updateStatus(`✅ 时间范围应用成功：${startTime.toLocaleString()} ~ ${endTime.toLocaleString()}`, 'success');
+}
+
+// 重置时间范围
+function resetTimeRange() {
+  const timeRangeStart = document.getElementById('timeRangeStart');
+  const timeRangeEnd = document.getElementById('timeRangeEnd');
+  
+  if (!timeRangeStart || !timeRangeEnd) return;
+  
+  // 清除时间范围选择
+  selectedTimeRange = null;
+  
+  // 重新初始化时间范围选择器
+  initTimeRangeSelector();
+  
+  // 重新绘制图表
+  drawLineChart();
+  
+  updateStatus(`✅ 时间范围已重置为全部数据`, 'success');
+}
+
+// 自动设置时间范围
+function autoTimeRange() {
+  const xColIndex = parseInt(xAxisSelect.value);
+  if (isNaN(xColIndex) || xColIndex >= csvHeaders.length) {
+    updateStatus(`❌ 请先选择X轴列`, 'danger');
+    return;
+  }
+  
+  // 获取所有Y轴选择的列
+  const yColIndexes = Array.from(yAxisSelect.selectedOptions)
+    .map(option => parseInt(option.value))
+    .filter(index => !isNaN(index) && index < csvHeaders.length);
+  
+  if (yColIndexes.length === 0) {
+    updateStatus(`❌ 请至少选择一个Y轴列`, 'danger');
+    return;
+  }
+  
+  // 提取X轴时间和Y轴数据
+  const xTimeValues = [];
+  const yDataList = yColIndexes.map(() => []);
+  
+  csvData.forEach((row) => {
+    const xValue = row[xColIndex]?.trim() || '';
+    
+    // 解析时间值
+    let timeValue = null;
+    try {
+      let rowTime = new Date(xValue);
+      if (isNaN(rowTime.getTime())) {
+        const timeMatch = xValue.match(/(\d{2}):(\d{2}):(\d{2}):(\d{3})/);
+        if (timeMatch) {
+          const [, hh, mm, ss, ms] = timeMatch;
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          rowTime = new Date(`${year}-${month}-${day} ${hh}:${mm}:${ss}.${ms}`);
+        }
+      }
+      if (!isNaN(rowTime.getTime())) {
+        timeValue = rowTime;
+      }
+    } catch (e) {}
+    xTimeValues.push(timeValue);
+    
+    // 收集Y轴数据
+    yColIndexes.forEach((yColIdx, idx) => {
+      const yValue = row[yColIdx]?.trim() || '';
+      yDataList[idx].push(yValue);
+    });
+  });
+  
+  // 判断Y轴是否为文字类型
+  const isTextData = yDataList.some((yData) => {
+    const sampleValue = yData.find(val => val && val !== '');
+    return sampleValue && isNaN(Number(sampleValue));
+  });
+  
+  // 判断数据是否为有效（非0且非"失锁"）
+  const isValidData = (value) => {
+    if (!value || value === '') return false;
+    if (isTextData) {
+      return value !== '失锁' && value.trim() !== '失锁';
+    } else {
+      return parseFloat(value) !== 0;
+    }
+  };
+  
+  // 判断数据是否为边界值（0或"失锁"）
+  const isBoundaryData = (value) => {
+    if (!value || value === '') return false;
+    if (isTextData) {
+      return value === '失锁' || value.trim() === '失锁';
+    } else {
+      return parseFloat(value) === 0;
+    }
+  };
+  
+  // 确定时间范围中心点
+  let centerTime = null;
+  let centerIndex = -1;
+  
+  if (selectedTimeRange && selectedTimeRange.start && selectedTimeRange.end) {
+    // 如果用户已经选择了时间范围，以该范围的中心为参考
+    centerTime = new Date((selectedTimeRange.start.getTime() + selectedTimeRange.end.getTime()) / 2);
+    // 找到中心点在数据中的索引
+    for (let i = 0; i < xTimeValues.length; i++) {
+      if (xTimeValues[i] && xTimeValues[i] >= centerTime) {
+        centerIndex = i;
+        break;
+      }
+    }
+    if (centerIndex === -1) centerIndex = Math.floor(xTimeValues.length / 2);
+  } else {
+    // 否则使用全部数据的中心点
+    const validTimeValues = xTimeValues.filter(time => time !== null);
+    if (validTimeValues.length > 0) {
+      const minTime = new Date(Math.min(...validTimeValues.map(time => time.getTime())));
+      const maxTime = new Date(Math.max(...validTimeValues.map(time => time.getTime())));
+      centerTime = new Date((minTime.getTime() + maxTime.getTime()) / 2);
+      // 找到中心点在数据中的索引
+      for (let i = 0; i < xTimeValues.length; i++) {
+        if (xTimeValues[i] && xTimeValues[i] >= centerTime) {
+          centerIndex = i;
+          break;
+        }
+      }
+      if (centerIndex === -1) centerIndex = Math.floor(xTimeValues.length / 2);
+    } else {
+      updateStatus(`❌ 无法解析时间数据`, 'danger');
+      return;
+    }
+  }
+  
+  // 找到中心点左侧最近的非零/非"失锁"数据
+  let validLeftIndex = -1;
+  for (let i = centerIndex; i >= 0; i--) {
+    let hasValidData = false;
+    for (const yData of yDataList) {
+      if (isValidData(yData[i])) {
+        hasValidData = true;
+        break;
+      }
+    }
+    if (hasValidData) {
+      validLeftIndex = i;
+      break;
+    }
+  }
+  
+  // 找到中心点右侧最近的非零/非"失锁"数据
+  let validRightIndex = -1;
+  for (let i = centerIndex; i < xTimeValues.length; i++) {
+    let hasValidData = false;
+    for (const yData of yDataList) {
+      if (isValidData(yData[i])) {
+        hasValidData = true;
+        break;
+      }
+    }
+    if (hasValidData) {
+      validRightIndex = i;
+      break;
+    }
+  }
+  
+  if (validLeftIndex === -1 && validRightIndex === -1) {
+    updateStatus(`❌ 未找到有效的Y轴数据`, 'danger');
+    return;
+  }
+  
+  // 从有效数据区域向左扩展，找到第一个0/失锁的位置
+  let leftBoundIndex = validLeftIndex >= 0 ? validLeftIndex : 0;
+  if (validLeftIndex >= 0) {
+    for (let i = validLeftIndex - 1; i >= 0; i--) {
+      let allBoundary = true;
+      for (const yData of yDataList) {
+        if (isValidData(yData[i])) {
+          allBoundary = false;
+          break;
+        }
+      }
+      if (allBoundary) {
+        leftBoundIndex = i;
+      } else {
+        break;
+      }
+    }
+  }
+  
+  // 从有效数据区域向右扩展，找到第一个0/失锁的位置
+  let rightBoundIndex = validRightIndex >= 0 ? validRightIndex : xTimeValues.length - 1;
+  if (validRightIndex >= 0) {
+    for (let i = validRightIndex + 1; i < xTimeValues.length; i++) {
+      let allBoundary = true;
+      for (const yData of yDataList) {
+        if (isValidData(yData[i])) {
+          allBoundary = false;
+          break;
+        }
+      }
+      if (allBoundary) {
+        rightBoundIndex = i;
+      } else {
+        break;
+      }
+    }
+  }
+  
+  // 计算扩展后的时间范围（向左右延伸3分钟）
+  const threeMinutes = 3 * 60 * 1000;
+  let newStartTime = null;
+  let newEndTime = null;
+  
+  if (leftBoundIndex >= 0 && xTimeValues[leftBoundIndex]) {
+    const leftTime = xTimeValues[leftBoundIndex];
+    newStartTime = new Date(leftTime.getTime() - threeMinutes);
+  } else if (centerTime) {
+    newStartTime = new Date(centerTime.getTime() - threeMinutes);
+  }
+  
+  if (rightBoundIndex >= 0 && xTimeValues[rightBoundIndex]) {
+    const rightTime = xTimeValues[rightBoundIndex];
+    newEndTime = new Date(rightTime.getTime() + threeMinutes);
+  } else if (centerTime) {
+    newEndTime = new Date(centerTime.getTime() + threeMinutes);
+  }
+  
+  if (!newStartTime || !newEndTime) {
+    updateStatus(`❌ 无法计算时间范围`, 'danger');
+    return;
+  }
+  
+  // 更新选择的时间范围
+  selectedTimeRange = { start: newStartTime, end: newEndTime };
+  
+  // 格式化时间为datetime-local输入框支持的格式
+  const formatDateTimeLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  };
+  
+  // 更新时间范围选择器的显示
+  const timeRangeStart = document.getElementById('timeRangeStart');
+  const timeRangeEnd = document.getElementById('timeRangeEnd');
+  if (timeRangeStart && timeRangeEnd) {
+    timeRangeStart.value = formatDateTimeLocal(newStartTime);
+    timeRangeEnd.value = formatDateTimeLocal(newEndTime);
+  }
+  
+  // 重新绘制图表
+  drawLineChart();
+  
+  const dataType = isTextData ? '文字' : '数值';
+  updateStatus(`✅ 智能时间范围已设置（${dataType}数据）：${newStartTime.toLocaleTimeString()} ~ ${newEndTime.toLocaleTimeString()}（左右延伸3分钟）`, 'success');
 }
 
 // 更新状态提示
