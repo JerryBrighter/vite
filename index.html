@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSV文件可视化分析工具 | DemDec & DemControl</title>
+  <!-- 引入外部资源 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <!-- 引入本地样式 -->
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 页面标题 -->
+    <h1 class="page-title">CSV文件可视化分析工具</h1>
+
+    <!-- 第一部分：文件上传区域 -->
+    <div class="row">
+      <!-- 1. DemDec数据文件上传 -->
+      <div class="col-md-6">
+        <div class="file-upload-section">
+          <h4>
+            📊 数据文件导入 
+            <span class="file-type-label data">DemDec</span>
+          </h4>
+          <div class="file-upload-area" id="dataFileUploadArea">
+			<!-- DemDec文件输入框 -->
+			<input type="file" id="demDecFileInput" accept=".csv" style="position: absolute; width: 0; height: 0; opacity: 0; z-index: -1;">
+			<h5>点击此处或拖拽文件到这里</h5>
+            <p class="text-muted mt-2">上传DemDec格式CSV数据文件（包含待分析的数值/文字数据）</p>
+          </div>
+          
+          <!-- 已上传文件名称显示 -->
+          <div id="dataFileNameDisplay" class="uploaded-file-name d-none">
+            <span id="dataFileName"></span>
+            <span>✅ 已加载</span>
+          </div>
+          
+          <!-- 编码选择器 -->
+          <div class="encoding-selector d-none" id="encodingSelector">
+            <label class="form-label fw-bold mb-2">🔤 文件编码选择（解决乱码）：</label>
+            <select class="form-select mb-2" id="dataFileEncoding">
+              <option value="auto">自动识别（推荐）</option>
+              <option value="gb2312">GB2312 (简体中文)</option>
+              <option value="gbk">GBK (扩展中文)</option>
+              <option value="utf8">UTF-8</option>
+              <option value="utf8bom">UTF-8 with BOM</option>
+              <option value="gb18030">GB18030 (全面中文支持)</option>
+            </select>
+            
+            <!-- 编码检测结果显示区域 -->
+            <div id="dataEncodingResult" class="encoding-result d-none"></div>
+            
+            <div class="encoding-preview" id="encodingPreview">
+              选择编码后将显示文件内容预览...
+            </div>
+            <button class="btn btn-sm btn-primary mt-2" id="confirmEncodingBtn">
+              ✅ 确认编码并解析文件
+            </button>
+          </div>
+          
+          <div class="help-text">
+            ✨ 说明：该文件为核心数据文件，列支持数值/文字类型，上传后可查看完整数据表格<br>
+            📝 编码：支持自动识别/手动选择GB2312/GBK/UTF-8，标题行合并前3行并去空格
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. DemControl时间筛选文件上传 -->
+      <div class="col-md-6">
+        <div class="file-upload-section">
+          <h4>
+            ⏰ 时间筛选文件导入 
+            <span class="file-type-label control">DemControl</span>
+          </h4>
+          <div class="file-upload-area" id="controlFileUploadArea">
+            <!-- DemControl文件输入框 -->
+			<input type="file" id="demControlFileInput" accept=".csv" style="position: absolute; width: 0; height: 0; opacity: 0; z-index: -1;">
+            <h5>点击此处或拖拽文件到这里</h5>
+            <p class="text-muted mt-2">上传DemControl格式CSV文件（第一列为时间筛选标记）</p>
+          </div>
+          
+          <!-- 已上传文件名称显示 -->
+          <div id="controlFileNameDisplay" class="uploaded-file-name d-none">
+            <span id="controlFileName"></span>
+            <span>✅ 已加载</span>
+          </div>
+          
+          <!-- Control文件编码选择器 -->
+          <div class="encoding-selector d-none" id="controlEncodingSelector">
+            <label class="form-label fw-bold mb-2">🔤 文件编码选择（解决乱码）：</label>
+            <select class="form-select mb-2" id="controlFileEncoding">
+              <option value="auto">自动识别（推荐）</option>
+              <option value="gb2312">GB2312 (简体中文)</option>
+              <option value="gbk">GBK (扩展中文)</option>
+              <option value="utf8">UTF-8</option>
+              <option value="utf8bom">UTF-8 with BOM</option>
+              <option value="gb18030">GB18030 (全面中文支持)</option>
+            </select>
+            
+            <!-- 编码检测结果显示区域 -->
+            <div id="controlEncodingResult" class="encoding-result d-none"></div>
+            
+            <div class="encoding-preview" id="controlEncodingPreview">
+              选择编码后将显示文件内容预览...
+            </div>
+            <button class="btn btn-sm btn-primary mt-2" id="confirmControlEncodingBtn">
+              ✅ 确认编码并解析文件
+            </button>
+          </div>
+          
+          <div class="help-text">
+            ✨ 说明：该文件时间列的每一行均可作为筛选起点，选择后将筛选数据文件中【所选时间+15分钟】范围内的数据
+          </div>
+          
+          <!-- 时间选择下拉框 -->
+          <div id="timeSelectorContainer" class="d-none time-select-dropdown">
+            <label class="form-label fw-bold mb-2">📌 选择筛选起始时间：</label>
+            <select class="form-select" id="timeSelectorSelect">
+              <!-- 动态加载DemControl文件中的时间选项 -->
+            </select>
+            <button class="btn btn-secondary w-100 mt-3" id="filterByControlBtn" disabled>
+              🎯 按所选时间筛选数据
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 状态提示区域 -->
+    <div class="status-text text-center" id="statusText">
+      📋 请先上传DemDec数据文件（左侧），可选上传DemControl时间筛选文件（右侧）
+    </div>
+
+    <!-- 第二部分：坐标轴选择器 -->
+    <div class="axis-selector">
+      <h4 class="mb-4">🎨 折线图坐标轴配置</h4>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label for="xAxisSelect" class="form-label fw-bold">X轴（默认第一列/时间）：</label>
+          <select class="form-select" id="xAxisSelect" disabled>
+            <option value="">请先上传DemDec数据文件</option>
+          </select>
+          <div class="help-text">选择作为X轴的列（建议选择时间列）</div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="yAxisSelect" class="form-label fw-bold">Y轴（可多选，支持文字/数值）：</label>
+          <select class="form-select multi-select" id="yAxisSelect" multiple disabled>
+            <option value="">请先上传DemDec数据文件</option>
+          </select>
+          <div class="help-text">按住Ctrl键（Windows）/Command键（Mac）可多选，支持文字/数值类型数据</div>
+        </div>
+        <div class="col-md-2 mb-3 d-flex align-items-end">
+          <button class="btn btn-primary w-100" id="drawChartBtn" disabled>
+            📈 绘制折线图
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第三部分：操作按钮区域 -->
+    <div class="btn-area">
+      <button class="btn btn-success me-2" id="exportChartBtn" disabled>
+        📥 导出图表为图片
+      </button>
+      <button class="btn btn-outline-secondary me-2" id="resetDataBtn" disabled>
+        🔄 重置为原始数据
+      </button>
+      <button class="btn btn-outline-primary" id="clearAllBtn">
+        🧹 清空所有文件
+      </button>
+    </div>
+
+    <!-- 第四部分：折线图区域 -->
+    <div class="chart-container" id="chartContainer">
+      <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+        📊 未绘制图表，上传数据文件并配置坐标轴后点击「绘制折线图」
+      </div>
+      <canvas id="lineChart" style="display: none;"></canvas>
+    </div>
+
+    <!-- 第五部分：数据表格区域 -->
+    <div class="table-controls mt-4 mb-2">
+      <div class="d-flex justify-content-between align-items-center">
+        <button class="btn btn-sm btn-primary" id="toggleTableBtn">
+          🔽 显示数据表格
+        </button>
+        <div class="pagination-controls d-none" id="paginationControls">
+          <button class="btn btn-sm btn-outline-secondary" id="prevPageBtn" disabled>
+            上一页
+          </button>
+          <span id="pageInfo" class="mx-2">第 1 页 / 共 1 页</span>
+          <div class="page-jump d-inline-flex mx-2">
+            <input type="number" id="pageInput" class="form-control form-control-sm w-24" min="1" placeholder="页码">
+            <button class="btn btn-sm btn-outline-secondary ms-1" id="jumpBtn">
+              跳转
+            </button>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" id="nextPageBtn" disabled>
+            下一页
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="table-container" id="tableContainer" style="display: none;">
+      <table class="table table-striped table-hover table-bordered w-100">
+        <thead id="tableHeader">
+          <tr>
+            <th colspan="100%" class="text-center text-muted">
+              📄 未上传数据文件，暂无表格数据
+            </th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 引入外部JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- 引入本地JS -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
