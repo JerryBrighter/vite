@@ -8,7 +8,7 @@ export default defineConfig({
     port: 3000,
     open: true // 启动时自动打开浏览器
   },
-  base: './', // 相对路径，适配各种部署环境
+  base: '/', // 相对路径，适配各种部署环境
   // 构建配置
     build: {
     outDir: 'dist',
