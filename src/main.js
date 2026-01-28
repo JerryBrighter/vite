@@ -1151,6 +1151,7 @@ function drawLineChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      backgroundColor: 'white',
       scales: {
         x: {
           title: { 
@@ -1250,18 +1251,38 @@ function exportChartAsImage() {
   }
 
   try {
-    // 导出为PNG图片
-    const url = lineChart.toDataURL('image/png', 1.0);
+    // 设置DPI为300
+    const dpi = 300;
+    const scaleFactor = dpi / 96; // 96是默认DPI
+    
+    // 创建临时canvas用于导出，确保背景为白色且分辨率为300dpi
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = lineChart.width * scaleFactor;
+    tempCanvas.height = lineChart.height * scaleFactor;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // 设置缩放
+    tempCtx.scale(scaleFactor, scaleFactor);
+    
+    // 填充白色背景
+    tempCtx.fillStyle = 'white';
+    tempCtx.fillRect(0, 0, lineChart.width, lineChart.height);
+    
+    // 绘制图表内容
+    tempCtx.drawImage(lineChart, 0, 0);
+    
+    // 导出为JPG图片
+    const url = tempCanvas.toDataURL('image/jpeg', 1.0);
     const a = document.createElement('a');
     a.href = url;
     // 修复文件名格式
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    a.download = `DemDec可视化图表_${timestamp}.png`;
+    a.download = `DemDec可视化图表_${timestamp}.jpg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
 
-    updateStatus(`✅ 图表已成功导出为PNG图片`, 'success');
+    updateStatus(`✅ 图表已成功导出为300dpi白色背景的JPG图片`, 'success');
   } catch (error) {
     updateStatus(`❌ 图表导出失败：${error.message}`, 'danger');
     console.error('导出错误详情：', error);

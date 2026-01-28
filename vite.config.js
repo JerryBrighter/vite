@@ -8,11 +8,13 @@ export default defineConfig({
     port: 3000,
     open: true // 启动时自动打开浏览器
   },
-  base: '/vite/', // 必须和仓库名一致，不能错！
+  base: './', // 相对路径，适配各种部署环境
   // 构建配置
-  build: {
+    build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    cssCodeSplit: true, // 分离CSS文件，避免样式内联失败
+    assetsInlineLimit: 4096, // 小资源内联，大资源单独打包，适配部署路径
     rollupOptions: {
       plugins: [
         nodeResolve({
@@ -28,6 +30,7 @@ export default defineConfig({
       }
     }
   },
+  
   // 优化依赖
   optimizeDeps: {
     include: ['iconv-lite']
