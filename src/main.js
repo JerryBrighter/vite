@@ -1039,11 +1039,27 @@ function drawLineChart() {
             }
             rowTextValues.push(yValue);
           } else {
-            if (!textMapping.has(yValue)) {
-              textMapping.set(yValue, textCounter++);
-              reverseTextMapping.set(textCounter - 1, yValue);
+            // 为特定文字设置固定映射值
+            if (yValue === '失锁' || yValue === '失锁\n' || yValue.trim() === '失锁' || yValue === 'U' || yValue === 'U\n' || yValue.trim() === 'U') {
+              numericValue = 0;
+              textMapping.set(yValue, 0);
+              reverseTextMapping.set(0, yValue === 'U' || yValue === 'U\n' || yValue.trim() === 'U' ? 'U (失锁)' : '失锁');
+            } else if (yValue === '锁定' || yValue === '锁定\n' || yValue.trim() === '锁定' || yValue === 'L' || yValue === 'L\n' || yValue.trim() === 'L') {
+              numericValue = 1;
+              textMapping.set(yValue, 1);
+              reverseTextMapping.set(1, yValue === 'L' || yValue === 'L\n' || yValue.trim() === 'L' ? 'L (锁定)' : '锁定');
+            } else if (yValue === '不工作' || yValue === '不工作\n' || yValue.trim() === '不工作') {
+              numericValue = -1;
+              textMapping.set(yValue, -1);
+              reverseTextMapping.set(-1, '不工作');
+            } else {
+              // 其他文字使用自动递增映射
+              if (!textMapping.has(yValue)) {
+                textMapping.set(yValue, textCounter++);
+                reverseTextMapping.set(textCounter - 1, yValue);
+              }
+              numericValue = textMapping.get(yValue);
             }
-            numericValue = textMapping.get(yValue);
             rowTextValues.push(yValue);
           }
           
@@ -1182,7 +1198,36 @@ function drawLineChart() {
           },
           beginAtZero: true,
           grid: { color: 'rgba(0, 0, 0, 0.05)' },
-          ticks: { font: { family: "'Microsoft YaHei', sans-serif" } }
+          ticks: { font: { family: "'Microsoft YaHei', sans-serif" } },
+          // 添加数据范围之外的空白区域
+          suggestedMin: function(context) {
+            const datasets = context.chart.data.datasets;
+            if (datasets.length === 0) return 0;
+            
+            let min = Infinity;
+            datasets.forEach(dataset => {
+              dataset.data.forEach(value => {
+                if (value !== null && value !== undefined && !isNaN(value) && value < min) {
+                  min = value;
+                }
+              });
+            });
+            return min > 0 ? 0 : min * 1.1; // 最小值以下留10%空白
+          },
+          suggestedMax: function(context) {
+            const datasets = context.chart.data.datasets;
+            if (datasets.length === 0) return 100;
+            
+            let max = -Infinity;
+            datasets.forEach(dataset => {
+              dataset.data.forEach(value => {
+                if (value !== null && value !== undefined && !isNaN(value) && value > max) {
+                  max = value;
+                }
+              });
+            });
+            return max * 1.1; // 最大值以上留10%空白
+          }
         }
       },
       plugins: {

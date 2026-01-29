@@ -388,3 +388,8 @@ body {
   box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
   width: 100px;
 }
+* {
+  box-sizing: border-box; /* 宽高包含padding和border，避免布局偏移 */
+  margin: 0;
+  padding: 0;
+}
