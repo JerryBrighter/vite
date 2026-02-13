@@ -301,14 +301,19 @@ body {
 /* 图表区域 */
 .chart-container {
   max-width: 100%;
-  height: 550px;
+  min-height: 550px;
   margin-top: 30px;
+  margin-bottom: 30px;
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 20px;
   background-color: white;
   box-shadow: var(--card-shadow);
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  clear: both;
 }
 .chart-container:hover {
   box-shadow: var(--card-shadow-hover);
@@ -392,4 +397,80 @@ body {
   box-sizing: border-box; /* 宽高包含padding和border，避免布局偏移 */
   margin: 0;
   padding: 0;
+}
+
+/* 时间范围选择器样式 */
+.time-range-selector {
+  margin: 30px 0;
+  padding: 25px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.time-range-selector:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.time-range-selector h5 {
+  color: var(--primary-color);
+  margin-bottom: 20px;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.time-range-selector .input-group {
+  transition: all 0.3s ease;
+}
+
+.time-range-selector .input-group:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.time-range-selector .input-group .time-icon {
+  min-width: 40px;
+  text-align: center;
+  background-color: rgba(13, 110, 253, 0.1);
+  border-color: rgba(13, 110, 253, 0.2);
+  transition: all 0.3s ease;
+}
+
+.time-range-selector .input-group:hover .time-icon {
+  background-color: rgba(13, 110, 253, 0.2);
+  border-color: rgba(13, 110, 253, 0.3);
+}
+
+/* 时间输入框样式 */
+input[type="datetime-local"] {
+  transition: all 0.3s ease;
+  box-shadow: var(--card-shadow);
+}
+
+input[type="datetime-local"]:hover {
+  box-shadow: var(--card-shadow-hover);
+  border-color: var(--primary-color);
+}
+
+input[type="datetime-local"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+}
+
+/* 无日期时的样式调整 */
+input[type="datetime-local"][data-no-date] {
+  padding-left: 60px;
+}
+
+/* 时间范围选择器按钮 */
+.time-range-selector .btn {
+  transition: all 0.3s ease;
+  box-shadow: var(--card-shadow);
+}
+
+.time-range-selector .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow-hover);
 }

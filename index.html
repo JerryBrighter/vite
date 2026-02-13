@@ -26,11 +26,13 @@
             📊 数据文件导入 
             <span class="file-type-label data">DemDec</span>
           </h4>
-          <div class="file-upload-area" id="dataFileUploadArea">
+          <div class="file-upload-area" id="dataFileUploadArea" style="position: relative; cursor: pointer;">
 			<!-- DemDec文件输入框 -->
-				<input type="file" id="demDecFileInput" accept=".csv,.dat" style="position: absolute; width: 0; height: 0; opacity: 0; z-index: -1;">
-				<h5>点击此处或拖拽文件到这里</h5>
-				<p class="text-muted mt-2">上传DemDec格式CSV或DAT数据文件（包含待分析的数值/文字数据）</p>
+				<input type="file" id="demDecFileInput" accept=".csv,.dat,.txt" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
+				<div style="position: relative; z-index: 1; pointer-events: none;">
+					<h5>点击此处或拖拽文件到这里</h5>
+					<p class="text-muted mt-2">上传DemDec格式CSV、DAT或TXT数据文件（包含待分析的数值/文字数据）</p>
+				</div>
           </div>
           
           <!-- 已上传文件名称显示 -->
@@ -76,11 +78,13 @@
             ⏰ 时间筛选文件导入 
             <span class="file-type-label control">DemControl</span>
           </h4>
-          <div class="file-upload-area" id="controlFileUploadArea">
+          <div class="file-upload-area" id="controlFileUploadArea" style="position: relative; cursor: pointer;">
             <!-- DemControl文件输入框 -->
-				<input type="file" id="demControlFileInput" accept=".csv,.dat" style="position: absolute; width: 0; height: 0; opacity: 0; z-index: -1;">
+			<input type="file" id="demControlFileInput" accept=".csv,.dat,.txt" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
+			<div style="position: relative; z-index: 1; pointer-events: none;">
 				<h5>点击此处或拖拽文件到这里</h5>
-				<p class="text-muted mt-2">上传DemControl格式CSV或DAT文件（第一列为时间筛选标记）</p>
+				<p class="text-muted mt-2">上传DemControl格式CSV、DAT或TXT文件（第一列为时间筛选标记）</p>
+			</div>
           </div>
           
           <!-- 已上传文件名称显示 -->
@@ -146,36 +150,44 @@
           </select>
           <div class="help-text">选择作为X轴的列（建议选择时间列）</div>
         </div>
-        <div class="col-md-6 mb-3">
-          <label for="yAxisSelect" class="form-label fw-bold">Y轴（可多选，支持文字/数值）：</label>
+        <div class="col-md-4 mb-3">
+          <label for="yAxisSelect" class="form-label fw-bold">左侧Y轴（可多选）：</label>
           <select class="form-select multi-select" id="yAxisSelect" multiple disabled>
             <option value="">请先上传DemDec数据文件</option>
           </select>
-          <div class="help-text">按住Ctrl键（Windows）/Command键（Mac）可多选，支持文字/数值类型数据</div>
+          <div class="help-text">按住Ctrl键可多选，使用左侧Y轴刻度</div>
         </div>
-        <div class="col-md-2 mb-3 d-flex align-items-end">
-          <button class="btn btn-primary w-100" id="drawChartBtn" disabled>
+        <div class="col-md-4 mb-3">
+          <label for="yAxis2Select" class="form-label fw-bold">右侧Y轴（可多选）：</label>
+          <select class="form-select multi-select" id="yAxis2Select" multiple disabled>
+            <option value="">请先上传DemDec数据文件</option>
+          </select>
+          <div class="help-text">按住Ctrl键可多选，使用右侧Y轴刻度</div>
+        </div>
+      </div>
+      <div class="row mt-3">
+        <div class="col-md-12 d-flex justify-content-center">
+          <button class="btn btn-primary w-50" id="drawChartBtn" disabled>
             📈 绘制折线图
           </button>
         </div>
       </div>
       
-      <!-- 时间范围选择器 -->
-      <div class="time-range-selector d-none mb-4" id="timeRangeSelector">
-        <h5 class="mb-2">🕒 时间范围调整（X轴）：</h5>
-        <div class="card p-4 bg-light rounded shadow-sm">
-          <div class="row g-3">
+      <!-- X轴范围选择器 -->
+      <div class="time-range-selector d-none" id="timeRangeSelector">
+        <h5>📏 X轴范围调整：</h5>
+        <div class="row g-3">
             <div class="col-md-4">
-              <label for="timeRangeStart" class="form-label fw-medium">开始时间：</label>
+              <label for="timeRangeStart" class="form-label fw-medium">开始值：</label>
               <div class="input-group">
-                <span class="input-group-text">📅</span>
+                <span class="input-group-text time-icon">📅</span>
                 <input type="datetime-local" class="form-control" id="timeRangeStart" style="border-radius: 0 0.375rem 0.375rem 0;">
               </div>
             </div>
             <div class="col-md-4">
-              <label for="timeRangeEnd" class="form-label fw-medium">结束时间：</label>
+              <label for="timeRangeEnd" class="form-label fw-medium">结束值：</label>
               <div class="input-group">
-                <span class="input-group-text">📅</span>
+                <span class="input-group-text time-icon">📅</span>
                 <input type="datetime-local" class="form-control" id="timeRangeEnd" style="border-radius: 0 0.375rem 0.375rem 0;">
               </div>
             </div>
@@ -194,10 +206,13 @@
               </div>
             </div>
           </div>
+          
+
+          
           <div class="mt-3 text-muted small">
-            <i class="bi bi-info-circle"></i> 选择时间范围后，图表将只显示该范围内的数据
+            <i class="bi bi-info-circle"></i> 选择X轴范围后，图表将只显示该范围内的数据（时间类型X轴使用日期时间选择器）<br>
+            <i class="bi bi-exclamation-triangle"></i> 如果时间解析失败，将显示当前时间作为默认值
           </div>
-        </div>
       </div>
     </div>
 
@@ -220,6 +235,52 @@
         📊 未绘制图表，上传数据文件并配置坐标轴后点击「绘制折线图」
       </div>
       <canvas id="lineChart" style="display: none;"></canvas>
+    </div>
+    
+    <!-- X轴拖动条 -->
+    <div class="x-axis-slider-container d-none mb-4" id="xAxisSliderContainer">
+      <div class="card p-4 bg-light rounded shadow-sm">
+        <label class="form-label fw-medium mb-3">🎚️ X轴范围拖动条：</label>
+        <div class="d-flex flex-column gap-3">
+          <div class="slider-wrapper" style="position: relative; width: 90%; height: 60px; max-width: 90%; margin: 0 auto;">
+            <!-- 拖动条背景 -->
+            <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 8px; background: #e9ecef; border-radius: 4px; transform: translateY(-50%);"></div>
+            <!-- 拖动条已选择区域 -->
+            <div id="sliderSelectedArea" style="position: absolute; top: 50%; left: 0%; width: 100%; height: 8px; background: #0d6efd; border-radius: 4px; transform: translateY(-50%);"></div>
+            <!-- 滑块可视化 -->
+            <div id="sliderHandleMin" style="position: absolute; top: 30%; left: 0%; width: 6px; height: 24px; background-color: #0d6efd; transform: translateX(-50%); box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; z-index: 10;"></div>
+            <div id="sliderHandleMax" style="position: absolute; top: 30%; left: 100%; width: 6px; height: 24px; background-color: #0d6efd; transform: translateX(-50%); box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; z-index: 10;"></div>
+            <style>
+                #sliderHandleMin:hover, #sliderHandleMax:hover {
+                    background-color: #dc3545;
+                }
+                #sliderValueMin, #sliderValueMax {
+                    position: absolute;
+                    top: 100%;
+                    margin-top: 5px;
+                    font-size: 12px;
+                    color: #6c757d;
+                    white-space: nowrap;
+                    z-index: 5;
+                    max-width: 120px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                #sliderValueMin {
+                    left: 0%;
+                    transform: translateX(-50%);
+                }
+                #sliderValueMax {
+                    left: 100%;
+                    transform: translateX(-50%);
+                }
+            </style>
+            <!-- 坐标值标识 -->
+            <div id="sliderValueMin">开始</div>
+            <div id="sliderValueMax">结束</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 第五部分：数据表格区域 -->

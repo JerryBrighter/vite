@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Range Slider 测试页面</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        .slider-container {
+            margin: 50px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .slider-wrapper {
+            position: relative;
+            width: 100%;
+            height: 60px;
+            margin: 20px 0;
+        }
+        .slider-track {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            transform: translateY(-50%);
+        }
+        .slider-range {
+            position: absolute;
+            top: 50%;
+            left: 0%;
+            width: 100%;
+            height: 8px;
+            background: #0d6efd;
+            border-radius: 4px;
+            transform: translateY(-50%);
+        }
+        .slider-handle {
+            position: absolute;
+            top: 30%;
+            width: 6px;
+            height: 24px;
+            background-color: #0d6efd;
+            transform: translateX(-50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 10;
+        }
+        .slider-handle:hover {
+            background-color: #dc3545;
+        }
+        .slider-value {
+            position: absolute;
+            top: 100%;
+            margin-top: 5px;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #6c757d;
+            white-space: nowrap;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Range Slider 测试页面</h1>
+        
+        <div class="slider-container">
+            <h3>双滑块测试</h3>
+            <p>测试左右两个滑块是否都能正常拖动</p>
+            
+            <div class="slider-wrapper">
+                <!-- 拖动条背景 -->
+                <div class="slider-track"></div>
+                <!-- 拖动条已选择区域 -->
+                <div class="slider-range" id="sliderRange"></div>
+                <!-- 滑块可视化 -->
+                <div class="slider-handle" id="handleMin" style="left: 0%;"></div>
+                <div class="slider-handle" id="handleMax" style="left: 100%;"></div>
+                <!-- 坐标值标识 -->
+                <div class="slider-value" id="valueMin" style="left: 0%;">0</div>
+                <div class="slider-value" id="valueMax" style="left: 100%;">100</div>
+            </div>
+            
+            <div class="mt-4">
+                <h4>测试结果：</h4>
+                <div id="testResult" class="alert alert-info">
+                    请尝试拖动左右两个滑块，观察是否都能正常移动
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 获取DOM元素
+        const sliderRange = document.getElementById('sliderRange');
+        const handleMin = document.getElementById('handleMin');
+        const handleMax = document.getElementById('handleMax');
+        const valueMin = document.getElementById('valueMin');
+        const valueMax = document.getElementById('valueMax');
+        const testResult = document.getElementById('testResult');
+        const sliderWrapper = document.querySelector('.slider-wrapper');
+        
+        // 初始化测试结果
+        let minMoved = false;
+        let maxMoved = false;
+        let isDragging = false;
+        let currentHandle = null;
+        
+        // 更新滑块状态
+        function updateSlider() {
+            const min = parseFloat(handleMin.style.left) || 0;
+            const max = parseFloat(handleMax.style.left) || 100;
+            
+            // 更新滑块位置
+            sliderRange.style.left = `${min}%`;
+            sliderRange.style.width = `${max - min}%`;
+            
+            // 更新坐标值
+            valueMin.style.left = `${min}%`;
+            valueMax.style.left = `${max}%`;
+            valueMin.textContent = Math.round(min);
+            valueMax.textContent = Math.round(max);
+            
+            // 更新测试结果
+            if (min > 0) minMoved = true;
+            if (max < 100) maxMoved = true;
+            
+            if (minMoved && maxMoved) {
+                testResult.className = 'alert alert-success';
+                testResult.textContent = '测试成功！左右两个滑块都能正常拖动';
+            } else if (minMoved) {
+                testResult.className = 'alert alert-warning';
+                testResult.textContent = '左侧滑块可以拖动，右侧滑块无法拖动';
+            } else if (maxMoved) {
+                testResult.className = 'alert alert-warning';
+                testResult.textContent = '右侧滑块可以拖动，左侧滑块无法拖动';
+            } else {
+                testResult.className = 'alert alert-info';
+                testResult.textContent = '请尝试拖动左右两个滑块，观察是否都能正常移动';
+            }
+        }
+        
+        // 计算鼠标位置
+        function getMousePosition(e) {
+            const rect = sliderWrapper.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+            return percentage;
+        }
+        
+        // 鼠标按下事件
+        function onMouseDown(e) {
+            if (e.target === handleMin || e.target === handleMax) {
+                isDragging = true;
+                currentHandle = e.target;
+            }
+        }
+        
+        // 鼠标移动事件
+        function onMouseMove(e) {
+            if (isDragging && currentHandle) {
+                const percentage = getMousePosition(e);
+                const min = parseFloat(handleMin.style.left) || 0;
+                const max = parseFloat(handleMax.style.left) || 100;
+                
+                if (currentHandle === handleMin) {
+                    if (percentage < max - 2) {
+                        currentHandle.style.left = `${percentage}%`;
+                    }
+                } else if (currentHandle === handleMax) {
+                    if (percentage > min + 2) {
+                        currentHandle.style.left = `${percentage}%`;
+                    }
+                }
+                
+                updateSlider();
+            }
+        }
+        
+        // 鼠标释放事件
+        function onMouseUp() {
+            isDragging = false;
+            currentHandle = null;
+        }
+        
+        // 添加事件监听器
+        handleMin.addEventListener('mousedown', onMouseDown);
+        handleMax.addEventListener('mousedown', onMouseDown);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    </script>
+</body>
+</html>

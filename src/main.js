@@ -5,56 +5,57 @@ document.addEventListener('drop', (e) => e.preventDefault());
 
 // ========== DOM元素获取 ==========
 // 文件上传相关
-const dataFileUploadArea = document.getElementById('dataFileUploadArea');
-const demDecFileInput = document.getElementById('demDecFileInput');
-const controlFileUploadArea = document.getElementById('controlFileUploadArea');
-const demControlFileInput = document.getElementById('demControlFileInput');
-const filterByControlBtn = document.getElementById('filterByControlBtn');
+let dataFileUploadArea;
+let demDecFileInput;
+let controlFileUploadArea;
+let demControlFileInput;
+let filterByControlBtn;
 
 // 文件名称显示元素
-const dataFileNameDisplay = document.getElementById('dataFileNameDisplay');
-const dataFileName = document.getElementById('dataFileName');
-const controlFileNameDisplay = document.getElementById('controlFileNameDisplay');
-const controlFileName = document.getElementById('controlFileName');
+let dataFileNameDisplay;
+let dataFileName;
+let controlFileNameDisplay;
+let controlFileName;
 
 // 编码选择器相关
-const encodingSelector = document.getElementById('encodingSelector');
-const dataFileEncoding = document.getElementById('dataFileEncoding');
-const encodingPreview = document.getElementById('encodingPreview');
-const confirmEncodingBtn = document.getElementById('confirmEncodingBtn');
-const controlEncodingSelector = document.getElementById('controlEncodingSelector');
-const controlFileEncoding = document.getElementById('controlFileEncoding');
-const controlEncodingPreview = document.getElementById('controlEncodingPreview');
-const confirmControlEncodingBtn = document.getElementById('confirmControlEncodingBtn');
+let encodingSelector;
+let dataFileEncoding;
+let encodingPreview;
+let confirmEncodingBtn;
+let controlEncodingSelector;
+let controlFileEncoding;
+let controlEncodingPreview;
+let confirmControlEncodingBtn;
 
 // 编码检测结果显示元素
-const dataEncodingResult = document.getElementById('dataEncodingResult');
-const controlEncodingResult = document.getElementById('controlEncodingResult');
+let dataEncodingResult;
+let controlEncodingResult;
 
 // 时间选择下拉框相关
-const timeSelectorContainer = document.getElementById('timeSelectorContainer');
-const timeSelectorSelect = document.getElementById('timeSelectorSelect');
+let timeSelectorContainer;
+let timeSelectorSelect;
 
 // 选择器相关
-const xAxisSelect = document.getElementById('xAxisSelect');
-const yAxisSelect = document.getElementById('yAxisSelect');
-const drawChartBtn = document.getElementById('drawChartBtn');
+let xAxisSelect;
+let yAxisSelect;
+let yAxis2Select;
+let drawChartBtn;
 
 // 按钮相关
-const exportChartBtn = document.getElementById('exportChartBtn');
-const resetDataBtn = document.getElementById('resetDataBtn');
-const clearAllBtn = document.getElementById('clearAllBtn');
+let exportChartBtn;
+let resetDataBtn;
+let clearAllBtn;
 
 // 显示区域相关
-const statusText = document.getElementById('statusText');
-const tableContainer = document.getElementById('tableContainer');
-const tableHeader = document.getElementById('tableHeader');
-const tableBody = document.getElementById('tableBody');
-const chartContainer = document.getElementById('chartContainer');
-const lineChart = document.getElementById('lineChart');
+let statusText;
+let tableContainer;
+let tableHeader;
+let tableBody;
+let chartContainer;
+let lineChart;
 // 数据行数提示
-const dataCountHint = document.getElementById('dataCountHint');
-const totalDataCount = document.getElementById('totalDataCount');
+let dataCountHint;
+let totalDataCount;
 
 // ========== 全局变量 ==========
 let csvHeaders = []; // 表头数组
@@ -98,51 +99,146 @@ const chartColors = [
 
 // ========== 事件绑定 ==========
 // DOM加载完成后绑定事件
+console.log('开始绑定事件...');
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOMContentLoaded事件触发，开始初始化...');
+  // 初始化所有DOM元素
+  console.log('开始获取DOM元素...');
+  dataFileUploadArea = document.getElementById('dataFileUploadArea');
+  console.log('dataFileUploadArea:', dataFileUploadArea);
+  demDecFileInput = document.getElementById('demDecFileInput');
+  console.log('demDecFileInput:', demDecFileInput);
+  controlFileUploadArea = document.getElementById('controlFileUploadArea');
+  console.log('controlFileUploadArea:', controlFileUploadArea);
+  demControlFileInput = document.getElementById('demControlFileInput');
+  console.log('demControlFileInput:', demControlFileInput);
+  filterByControlBtn = document.getElementById('filterByControlBtn');
+  dataFileNameDisplay = document.getElementById('dataFileNameDisplay');
+  dataFileName = document.getElementById('dataFileName');
+  controlFileNameDisplay = document.getElementById('controlFileNameDisplay');
+  controlFileName = document.getElementById('controlFileName');
+  encodingSelector = document.getElementById('encodingSelector');
+  dataFileEncoding = document.getElementById('dataFileEncoding');
+  encodingPreview = document.getElementById('encodingPreview');
+  confirmEncodingBtn = document.getElementById('confirmEncodingBtn');
+  controlEncodingSelector = document.getElementById('controlEncodingSelector');
+  controlFileEncoding = document.getElementById('controlFileEncoding');
+  controlEncodingPreview = document.getElementById('controlEncodingPreview');
+  confirmControlEncodingBtn = document.getElementById('confirmControlEncodingBtn');
+  dataEncodingResult = document.getElementById('dataEncodingResult');
+  controlEncodingResult = document.getElementById('controlEncodingResult');
+  timeSelectorContainer = document.getElementById('timeSelectorContainer');
+  timeSelectorSelect = document.getElementById('timeSelectorSelect');
+  xAxisSelect = document.getElementById('xAxisSelect');
+  yAxisSelect = document.getElementById('yAxisSelect');
+  yAxis2Select = document.getElementById('yAxis2Select');
+  drawChartBtn = document.getElementById('drawChartBtn');
+  exportChartBtn = document.getElementById('exportChartBtn');
+  resetDataBtn = document.getElementById('resetDataBtn');
+  clearAllBtn = document.getElementById('clearAllBtn');
+  statusText = document.getElementById('statusText');
+  tableContainer = document.getElementById('tableContainer');
+  tableHeader = document.getElementById('tableHeader');
+  tableBody = document.getElementById('tableBody');
+  chartContainer = document.getElementById('chartContainer');
+  lineChart = document.getElementById('lineChart');
+  dataCountHint = document.getElementById('dataCountHint');
+  totalDataCount = document.getElementById('totalDataCount');
+  console.log('DOM元素获取完成');
+
+  
   // ========== 修复：DemDec数据文件上传事件 ==========
-dataFileUploadArea.addEventListener('click', function(e) {
+  if (dataFileUploadArea && demDecFileInput) {
+    // 简化事件处理：为上传区域及其所有子元素添加点击事件
+    dataFileUploadArea.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      demDecFileInput.click();
+      console.log('点击数据文件上传区域，触发文件选择框');
+    });
+    
+    // 确保文件输入元素本身也能响应点击
+    demDecFileInput.addEventListener('click', function(e) {
+      e.stopPropagation();
+      console.log('文件输入元素被点击');
+    });
+  }
   
-  // 直接触发原有input元素的点击事件，简化逻辑
-  demDecFileInput.click();
-  console.log('点击数据文件上传区域，触发文件选择框');
-});
-  
-// ========== 修复：DemControl时间筛选文件上传事件 ==========
-controlFileUploadArea.addEventListener('click', function(e) {
-  
-  // 直接触发原有input元素的点击事件，简化逻辑
-  demControlFileInput.click();
-  console.log('点击控制文件上传区域，触发文件选择框');
-});
+  // ========== 修复：DemControl时间筛选文件上传事件 ==========
+  if (controlFileUploadArea && demControlFileInput) {
+    // 简化事件处理：为上传区域及其所有子元素添加点击事件
+    controlFileUploadArea.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      demControlFileInput.click();
+      console.log('点击控制文件上传区域，触发文件选择框');
+    });
+    
+    // 确保文件输入元素本身也能响应点击
+    demControlFileInput.addEventListener('click', function(e) {
+      e.stopPropagation();
+      console.log('文件输入元素被点击');
+    });
+  }
   
   // 保留原有拖拽事件绑定（无需修改）
-  dataFileUploadArea.addEventListener('dragover', (e) => handleDragOver(e, 'data'));
-  dataFileUploadArea.addEventListener('dragleave', (e) => handleDragLeave(e, 'data'));
-  dataFileUploadArea.addEventListener('drop', (e) => handleDrop(e, 'data'));
-  demDecFileInput.addEventListener('change', (e) => handleDemDecFileSelect(e));
+  if (dataFileUploadArea) {
+    dataFileUploadArea.addEventListener('dragover', (e) => handleDragOver(e, 'data'));
+    dataFileUploadArea.addEventListener('dragleave', (e) => handleDragLeave(e, 'data'));
+    dataFileUploadArea.addEventListener('drop', (e) => handleDrop(e, 'data'));
+  }
+  if (demDecFileInput) {
+    demDecFileInput.addEventListener('change', (e) => handleDemDecFileSelect(e));
+  }
   
-  controlFileUploadArea.addEventListener('dragover', (e) => handleDragOver(e, 'control'));
-  controlFileUploadArea.addEventListener('dragleave', (e) => handleDragLeave(e, 'control'));
-  controlFileUploadArea.addEventListener('drop', (e) => handleDrop(e, 'control'));
-  demControlFileInput.addEventListener('change', (e) => handleDemControlFileSelect(e));
+  if (controlFileUploadArea) {
+    controlFileUploadArea.addEventListener('dragover', (e) => handleDragOver(e, 'control'));
+    controlFileUploadArea.addEventListener('dragleave', (e) => handleDragLeave(e, 'control'));
+    controlFileUploadArea.addEventListener('drop', (e) => handleDrop(e, 'control'));
+  }
+  if (demControlFileInput) {
+    demControlFileInput.addEventListener('change', (e) => handleDemControlFileSelect(e));
+  }
   
   // 其他事件绑定保持不变
-  dataFileEncoding.addEventListener('change', () => updateEncodingPreview('data'));
-  controlFileEncoding.addEventListener('change', () => updateEncodingPreview('control'));
-  confirmEncodingBtn.addEventListener('click', () => parseDemDecFileWithSelectedEncoding());
-  confirmControlEncodingBtn.addEventListener('click', () => parseDemControlFileWithSelectedEncoding());
-  filterByControlBtn.addEventListener('click', filterDataByDemControl);
-  drawChartBtn.addEventListener('click', drawLineChart);
-  exportChartBtn.addEventListener('click', exportChartAsImage);
-  resetDataBtn.addEventListener('click', resetToOriginalData);
-  clearAllBtn.addEventListener('click', clearAllFiles);
-  timeSelectorSelect.addEventListener('change', handleTimeSelectChange);
+  if (dataFileEncoding) {
+    dataFileEncoding.addEventListener('change', () => updateEncodingPreview('data'));
+  }
+  if (controlFileEncoding) {
+    controlFileEncoding.addEventListener('change', () => updateEncodingPreview('control'));
+  }
+  if (confirmEncodingBtn) {
+    confirmEncodingBtn.addEventListener('click', () => parseDemDecFileWithSelectedEncoding());
+  }
+  if (confirmControlEncodingBtn) {
+    confirmControlEncodingBtn.addEventListener('click', () => parseDemControlFileWithSelectedEncoding());
+  }
+  if (filterByControlBtn) {
+    filterByControlBtn.addEventListener('click', filterDataByDemControl);
+  }
+  if (drawChartBtn) {
+    drawChartBtn.addEventListener('click', drawLineChart);
+  }
+  if (exportChartBtn) {
+    exportChartBtn.addEventListener('click', exportChartAsImage);
+  }
+  if (resetDataBtn) {
+    resetDataBtn.addEventListener('click', resetToOriginalData);
+  }
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', clearAllFiles);
+  }
+  if (timeSelectorSelect) {
+    timeSelectorSelect.addEventListener('change', handleTimeSelectChange);
+  }
   
   // 时间范围选择器事件绑定
   const applyTimeRangeBtn = document.getElementById('applyTimeRangeBtn');
   const resetTimeRangeBtn = document.getElementById('resetTimeRangeBtn');
   const autoTimeRangeBtn = document.getElementById('autoTimeRangeBtn');
-  const xAxisSelect = document.getElementById('xAxisSelect');
+  const sliderHandleMin = document.getElementById('sliderHandleMin');
+  const sliderHandleMax = document.getElementById('sliderHandleMax');
+  const sliderWrapper = document.querySelector('.x-axis-slider-container .slider-wrapper');
   
   if (applyTimeRangeBtn) {
     applyTimeRangeBtn.addEventListener('click', applyTimeRange);
@@ -155,6 +251,61 @@ controlFileUploadArea.addEventListener('click', function(e) {
   }
   if (xAxisSelect) {
     xAxisSelect.addEventListener('change', updateTimeRangeSelectorVisibility);
+  }
+  
+  // 初始化滑块拖动功能
+  if (sliderHandleMin && sliderHandleMax && sliderWrapper) {
+    let isDragging = false;
+    let currentHandle = null;
+    
+    // 计算鼠标位置
+    function getMousePosition(e) {
+      const rect = sliderWrapper.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+      return percentage;
+    }
+    
+    // 鼠标按下事件
+    function onMouseDown(e) {
+      if (e.target === sliderHandleMin || e.target === sliderHandleMax) {
+        isDragging = true;
+        currentHandle = e.target;
+      }
+    }
+    
+    // 鼠标移动事件
+    function onMouseMove(e) {
+      if (isDragging && currentHandle) {
+        const percentage = getMousePosition(e);
+        const min = parseFloat(sliderHandleMin.style.left) || 0;
+        const max = parseFloat(sliderHandleMax.style.left) || 100;
+        
+        if (currentHandle === sliderHandleMin) {
+          if (percentage < max - 2) {
+            currentHandle.style.left = `${percentage}%`;
+            handleXAxisSliderChangeFromDrag(percentage, max);
+          }
+        } else if (currentHandle === sliderHandleMax) {
+          if (percentage > min + 2) {
+            currentHandle.style.left = `${percentage}%`;
+            handleXAxisSliderChangeFromDrag(min, percentage);
+          }
+        }
+      }
+    }
+    
+    // 鼠标释放事件
+    function onMouseUp() {
+      isDragging = false;
+      currentHandle = null;
+    }
+    
+    // 添加事件监听器
+    sliderHandleMin.addEventListener('mousedown', onMouseDown);
+    sliderHandleMax.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   }
   
   // 初始化表格显示/隐藏切换功能
@@ -240,67 +391,119 @@ function handleDrop(e, type) {
 // 处理DemDec文件选择
 function handleDemDecFileSelect(e) {
   console.log('选择了DemDec文件');
-  const file = e.target.files[0];
-  if (file) {
-    demDecFileName = file.name;
-    if (dataFileName) {
-      dataFileName.textContent = demDecFileName;
+  try {
+    const file = e.target.files[0];
+    if (file) {
+      demDecFileName = file.name;
+      if (dataFileName) {
+        dataFileName.textContent = demDecFileName;
+      }
+      if (dataFileNameDisplay) {
+        dataFileNameDisplay.classList.remove('d-none');
+      }
+      console.log('准备更新状态...');
+      updateStatus(`📁 开始处理文件：${file.name}`, 'info');
+      console.log('状态已更新，准备读取文件...');
+      readFileAsBuffer(file, 'data');
     }
-    if (dataFileNameDisplay) {
-      dataFileNameDisplay.classList.remove('d-none');
-    }
-    readFileAsBuffer(file, 'data');
+  } catch (error) {
+    console.error('文件选择处理错误：', error);
+    updateStatus(`❌ 文件选择处理失败：${error.message}`, 'danger');
   }
 }
 
 // 处理DemControl文件选择
 function handleDemControlFileSelect(e) {
   console.log('选择了DemControl文件');
-  const file = e.target.files[0];
-  if (file) {
-    demControlFileName = file.name;
-    if (controlFileName) {
-      controlFileName.textContent = demControlFileName;
+  try {
+    const file = e.target.files[0];
+    if (file) {
+      demControlFileName = file.name;
+      if (controlFileName) {
+        controlFileName.textContent = demControlFileName;
+      }
+      if (controlFileNameDisplay) {
+        controlFileNameDisplay.classList.remove('d-none');
+      }
+      console.log('准备更新状态...');
+      updateStatus(`📁 开始处理文件：${file.name}`, 'info');
+      console.log('状态已更新，准备读取文件...');
+      readFileAsBuffer(file, 'control');
     }
-    if (controlFileNameDisplay) {
-      controlFileNameDisplay.classList.remove('d-none');
-    }
-    readFileAsBuffer(file, 'control');
+  } catch (error) {
+    console.error('文件选择处理错误：', error);
+    updateStatus(`❌ 文件选择处理失败：${error.message}`, 'danger');
   }
 }
 
 // 读取文件为ArrayBuffer并自动检测编码解析
 function readFileAsBuffer(file, type) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      if (type === 'data') {
-        demDecFileBuffer = e.target.result;
-        
-        // 自动检测编码
-        const uint8Array = new Uint8Array(demDecFileBuffer);
-        detectedDataEncoding = autoDetectEncoding(uint8Array, 'data');
-        
-        // 自动设置编码并解析文件
-        dataFileEncoding.value = 'auto';
-        parseDemDecFileWithSelectedEncoding();
-      } else {
-        demControlFileBuffer = e.target.result;
-        
-        // 自动检测编码
-        const uint8Array = new Uint8Array(demControlFileBuffer);
-        detectedControlEncoding = autoDetectEncoding(uint8Array, 'control');
-        
-        // 自动设置编码并解析文件
-        controlFileEncoding.value = 'auto';
-        parseDemControlFileWithSelectedEncoding();
+  console.log('开始读取文件：', file.name, '类型：', type);
+  try {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        console.log('文件读取完成，开始处理...');
+        if (type === 'data') {
+          demDecFileBuffer = e.target.result;
+          console.log('DemDec文件缓冲已设置，大小：', demDecFileBuffer.byteLength);
+          
+          // 自动检测编码
+          const uint8Array = new Uint8Array(demDecFileBuffer);
+          detectedDataEncoding = autoDetectEncoding(uint8Array, 'data');
+          console.log('编码检测完成，检测到的编码：', detectedDataEncoding);
+          
+          // 确保dataFileEncoding已初始化
+          if (!dataFileEncoding) {
+            dataFileEncoding = document.getElementById('dataFileEncoding');
+            console.log('dataFileEncoding已初始化：', dataFileEncoding);
+          }
+          
+          // 自动设置编码并解析文件
+          if (dataFileEncoding) {
+            dataFileEncoding.value = 'auto';
+            console.log('编码已设置为auto');
+          }
+          console.log('准备解析DemDec文件...');
+          parseDemDecFileWithSelectedEncoding();
+        } else {
+          demControlFileBuffer = e.target.result;
+          console.log('DemControl文件缓冲已设置，大小：', demControlFileBuffer.byteLength);
+          
+          // 自动检测编码
+          const uint8Array = new Uint8Array(demControlFileBuffer);
+          detectedControlEncoding = autoDetectEncoding(uint8Array, 'control');
+          console.log('编码检测完成，检测到的编码：', detectedControlEncoding);
+          
+          // 确保controlFileEncoding已初始化
+          if (!controlFileEncoding) {
+            controlFileEncoding = document.getElementById('controlFileEncoding');
+            console.log('controlFileEncoding已初始化：', controlFileEncoding);
+          }
+          
+          // 自动设置编码并解析文件
+          if (controlFileEncoding) {
+            controlFileEncoding.value = 'auto';
+            console.log('编码已设置为auto');
+          }
+          console.log('准备解析DemControl文件...');
+          parseDemControlFileWithSelectedEncoding();
+        }
+      } catch (error) {
+        console.error('文件读取处理错误：', error);
+        updateStatus(`❌ 文件读取失败：${error.message}`, 'danger');
       }
-    } catch (error) {
-      updateStatus(`❌ 文件读取失败：${error.message}`, 'danger');
-      console.error('文件读取错误：', error);
-    }
-  };
-  reader.readAsArrayBuffer(file);
+    };
+    reader.onerror = function(error) {
+      console.error('文件读取器错误：', error);
+      updateStatus(`❌ 文件读取失败：${error.target.error.message}`, 'danger');
+    };
+    reader.readAsArrayBuffer(file);
+    console.log('文件读取已开始');
+  } catch (error) {
+    console.error('文件读取初始化错误：', error);
+    updateStatus(`❌ 文件读取初始化失败：${error.message}`, 'danger');
+  }
 }
 
 // 更新编码预览
@@ -443,23 +646,36 @@ function decodeBuffer(uint8Array, encoding) {
 
 // 使用选定的编码解析DemDec文件
 function parseDemDecFileWithSelectedEncoding() {
-  if (!demDecFileBuffer) {
-    updateStatus(`❌ 请先上传文件`, 'danger');
-    return;
-  }
-  
-  const selectedEncoding = dataFileEncoding.value;
-  // 如果选择自动识别，使用检测到的编码
-  const finalEncoding = selectedEncoding === 'auto' ? detectedDataEncoding || 'utf8' : selectedEncoding;
-  
-  // 检测文件类型和分隔符
-  const isDatFile = demDecFileName.toLowerCase().endsWith('.dat');
-  const delimiter = isDatFile ? '\t' : ',';
-  
-  // 显示最终使用的编码和文件类型
-  updateStatus(`📝 正在使用${selectedEncoding === 'auto' ? `自动检测(${finalEncoding})` : finalEncoding}编码解析文件：${demDecFileName} (${isDatFile ? 'DAT格式，TAB分隔' : 'CSV格式，逗号分隔'})`, 'primary');
-  
+  console.log('开始解析DemDec文件...');
   try {
+    if (!demDecFileBuffer) {
+      console.log('文件缓冲为空，返回');
+      updateStatus(`❌ 请先上传文件`, 'danger');
+      return;
+    }
+    console.log('文件缓冲存在，大小：', demDecFileBuffer.byteLength);
+    
+    // 确保dataFileEncoding已初始化
+    if (!dataFileEncoding) {
+      dataFileEncoding = document.getElementById('dataFileEncoding');
+      console.log('dataFileEncoding已初始化：', dataFileEncoding);
+    }
+    
+    const selectedEncoding = dataFileEncoding ? dataFileEncoding.value : 'auto';
+    // 如果选择自动识别，使用检测到的编码
+    const finalEncoding = selectedEncoding === 'auto' ? detectedDataEncoding || 'utf8' : selectedEncoding;
+    console.log('使用编码:', finalEncoding);
+    
+    // 检测文件类型和分隔符
+    const isDatFile = demDecFileName.toLowerCase().endsWith('.dat') || demDecFileName.toLowerCase().endsWith('.txt');
+    let delimiter = isDatFile ? '\t' : ',';
+    console.log('文件类型：', isDatFile ? 'DAT' : 'CSV', '分隔符：', delimiter);
+    
+    // 显示最终使用的编码和文件类型
+    console.log('准备更新状态...');
+    updateStatus(`📝 正在使用${selectedEncoding === 'auto' ? `自动检测(${finalEncoding})` : finalEncoding}编码解析文件：${demDecFileName} (${isDatFile ? 'DAT格式，TAB分隔' : 'CSV格式，逗号分隔'})`, 'primary');
+    console.log('状态已更新，开始解析文件内容...');
+  
     let csvContent = '';
     const uint8Array = new Uint8Array(demDecFileBuffer);
     
@@ -486,6 +702,59 @@ function parseDemDecFileWithSelectedEncoding() {
     const rows = csvContent.split(/\r?\n/).filter(row => row.trim() !== '');
     
     if (rows.length < 2) throw new Error(`${isDatFile ? 'DAT' : 'CSV'}文件数据不足（至少需要1行标题+1行数据）`);
+    
+    // 自动检测分隔符
+    function detectDelimiter(sampleRows) {
+      const counts = { ',': 0, '\t': 0, ' ': 0 };
+      const avgFieldsPerRow = {};
+      
+      // 分析前10行数据
+      const analysisRows = sampleRows.slice(0, Math.min(10, sampleRows.length));
+      
+      // 计算每种分隔符的出现次数和平均字段数
+      analysisRows.forEach(row => {
+        // 计算逗号数量
+        const commaMatches = row.match(/,/g);
+        if (commaMatches) counts[','] += commaMatches.length;
+        
+        // 计算TAB数量
+        const tabMatches = row.match(/\t/g);
+        if (tabMatches) counts['\t'] += tabMatches.length;
+        
+        // 计算连续空格组数
+        const spaceMatches = row.match(/\s+/g);
+        if (spaceMatches) counts[' '] += spaceMatches.length;
+      });
+      
+      // 计算每种分隔符的平均字段数
+      avgFieldsPerRow[','] = analysisRows.length > 0 ? counts[','] / analysisRows.length : 0;
+      avgFieldsPerRow['\t'] = analysisRows.length > 0 ? counts['\t'] / analysisRows.length : 0;
+      avgFieldsPerRow[' '] = analysisRows.length > 0 ? counts[' '] / analysisRows.length : 0;
+      
+      // 按照优先级选择分隔符
+      // 1. 优先使用逗号，平均每行至少有1个逗号
+      if (avgFieldsPerRow[','] >= 1) {
+        return ',';
+      }
+      // 2. 如果没有足够的逗号，使用TAB，平均每行至少有1个TAB
+      else if (avgFieldsPerRow['\t'] >= 1) {
+        return '\t';
+      }
+      // 3. 如果没有足够的TAB，使用空格
+      else {
+        return ' ';
+      }
+    }
+    
+    // 检测分隔符
+    const detectedDelimiter = detectDelimiter(rows);
+    if (detectedDelimiter !== delimiter) {
+      delimiter = detectedDelimiter;
+      updateStatus(`🔍 自动检测到分隔符：${delimiter === ' ' ? '空格' : delimiter === '\t' ? 'TAB' : delimiter}`, 'info');
+    }
+    
+    // 对于空格分隔的文件，需要特殊处理
+    const isSpaceSeparated = delimiter === ' ';
 
     // 判断文件是否包含时间列（检查前10行）
     function hasTimeColumn() {
@@ -560,7 +829,62 @@ function parseDemDecFileWithSelectedEncoding() {
     // 修复标题行处理逻辑
     let headerRows = rows.slice(0, headerRowCount);
     const parsedHeaderRows = headerRows.map(row => parseCSVLine(row, delimiter));
-    csvHeaders = mergeHeaderRows(parsedHeaderRows);
+    
+    // 检测是否为新格式（第一行数据包含冒号）
+    let isNewFormat = false;
+    if (rows.length > headerRowCount) {
+      const firstDataRow = rows[headerRowCount];
+      const parsedFirstDataRow = parseCSVLine(firstDataRow, delimiter);
+      isNewFormat = parsedFirstDataRow.length > 1 && parsedFirstDataRow.slice(1).some(field => {
+        // 检查原始字段是否包含冒号（因为parseCSVLine已经处理过了）
+        return firstDataRow.split(delimiter).slice(1).some(originalField => originalField.includes(':'));
+      });
+    }
+    
+    if (isNewFormat) {
+      // 对于新格式，从第一行数据中提取表头
+      if (rows.length > headerRowCount) {
+        const firstDataRow = rows[headerRowCount];
+        const originalFields = firstDataRow.split(delimiter).map(field => field.trim());
+        
+        csvHeaders = ['时间']; // 第一列是时间，设置标题为"时间"
+        
+        // 从其他列中提取项目标题
+        originalFields.slice(1).forEach(field => {
+          if (field.includes(':')) {
+            const parts = field.split(':');
+            if (parts.length >= 2) {
+              // 提取冒号前面的项目标题
+              const title = parts[0].trim();
+              csvHeaders.push(title);
+            } else {
+              csvHeaders.push(field);
+            }
+          } else {
+            csvHeaders.push(field);
+          }
+        });
+      }
+    } else {
+      // 对于旧格式，使用原来的表头处理逻辑
+      csvHeaders = mergeHeaderRows(parsedHeaderRows);
+      
+      // 如果没有标题栏，为其添加标题栏
+      if (csvHeaders.length === 0 || (csvHeaders.length === 1 && csvHeaders[0] === '列1')) {
+        // 检查是否有数据行
+        if (rows.length > headerRowCount) {
+          const firstDataRow = rows[headerRowCount];
+          const parsedFirstDataRow = parseCSVLine(firstDataRow, delimiter);
+          
+          // 创建标题栏，第一列为"时间"，其他列按顺序命名
+          const newHeaders = ['时间'];
+          for (let i = 1; i < parsedFirstDataRow.length; i++) {
+            newHeaders.push(`列${i + 1}`);
+          }
+          csvHeaders = newHeaders;
+        }
+      }
+    }
     
     // 数据行从标题行后开始
     const dataStartIndex = headerRowCount;
@@ -598,43 +922,69 @@ function parseDemDecFileWithSelectedEncoding() {
     csvData = filteredData;
     originalCsvData = JSON.parse(JSON.stringify(csvData)); // 备份原始数据
 
+    // 销毁之前的图表实例
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+    lineChart.style.display = 'none';
+    chartContainer.innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 text-muted">📊 未绘制图表，上传数据文件并配置坐标轴后点击「绘制折线图」</div>';
+
+    console.log('解析完成，数据行数:', csvData.length, '列数:', csvHeaders.length);
+    
     // 强制刷新表格和选择器
     renderTable(csvHeaders, csvData);
     initAxisSelector();
 
     // 更新状态和启用按钮
+    console.log('准备更新解析成功状态...');
     updateStatus(`✅ 文件解析成功【${demDecFileName}】：使用${finalEncoding.toUpperCase()}编码，共 ${csvData.length} 行数据，${csvHeaders.length} 列 (${headerRows.length}行标题已合并)`, 'success');
-    enableControls(['xAxisSelect', 'yAxisSelect', 'drawChartBtn', 'resetDataBtn']);
+    console.log('状态已更新，准备启用控件...');
+    enableControls(['xAxisSelect', 'yAxisSelect', 'yAxis2Select', 'drawChartBtn', 'resetDataBtn']);
     
     // 如果已选择DemControl文件且有选中时间，启用筛选按钮
     if (demControlFileSelected && selectedStartTime) {
       enableControls(['filterByControlBtn']);
     }
+    console.log('DemDec文件解析完成');
   } catch (error) {
-    updateStatus(`❌ 文件解析失败【${demDecFileName}】：${error.message}，请尝试更换编码格式`, 'danger');
     console.error('解析错误详情：', error);
+    updateStatus(`❌ 文件解析失败【${demDecFileName}】：${error.message}，请尝试更换编码格式`, 'danger');
   }
 }
 
 // 使用选定的编码解析DemControl文件
 function parseDemControlFileWithSelectedEncoding() {
-  if (!demControlFileBuffer) {
-    updateStatus(`❌ 请先上传文件`, 'danger');
-    return;
-  }
-  
-  const selectedEncoding = controlFileEncoding.value;
-  // 如果选择自动识别，使用检测到的编码
-  const finalEncoding = selectedEncoding === 'auto' ? detectedControlEncoding || 'utf8' : selectedEncoding;
-  
-  // 检测文件类型和分隔符
-  const isDatFile = demControlFileName.toLowerCase().endsWith('.dat');
-  const delimiter = isDatFile ? '\t' : ',';
-  
-  // 显示最终使用的编码和文件类型
-  updateStatus(`📅 正在使用${selectedEncoding === 'auto' ? `自动检测(${finalEncoding})` : finalEncoding}编码解析文件：${demControlFileName} (${isDatFile ? 'DAT格式，TAB分隔' : 'CSV格式，逗号分隔'})`, 'primary');
-  
+  console.log('开始解析DemControl文件...');
   try {
+    if (!demControlFileBuffer) {
+      console.log('文件缓冲为空，返回');
+      updateStatus(`❌ 请先上传文件`, 'danger');
+      return;
+    }
+    console.log('文件缓冲存在，大小：', demControlFileBuffer.byteLength);
+    
+    // 确保controlFileEncoding已初始化
+    if (!controlFileEncoding) {
+      controlFileEncoding = document.getElementById('controlFileEncoding');
+      console.log('controlFileEncoding已初始化：', controlFileEncoding);
+    }
+    
+    const selectedEncoding = controlFileEncoding ? controlFileEncoding.value : 'auto';
+    // 如果选择自动识别，使用检测到的编码
+    const finalEncoding = selectedEncoding === 'auto' ? detectedControlEncoding || 'utf8' : selectedEncoding;
+    console.log('使用编码:', finalEncoding);
+    
+    // 检测文件类型和分隔符
+    const isDatFile = demControlFileName.toLowerCase().endsWith('.dat') || demControlFileName.toLowerCase().endsWith('.txt');
+    let delimiter = isDatFile ? '\t' : ',';
+    console.log('文件类型：', isDatFile ? 'DAT' : 'CSV', '分隔符：', delimiter);
+    
+    // 显示最终使用的编码和文件类型
+    console.log('准备更新状态...');
+    updateStatus(`📅 正在使用${selectedEncoding === 'auto' ? `自动检测(${finalEncoding})` : finalEncoding}编码解析文件：${demControlFileName} (${isDatFile ? 'DAT格式，TAB分隔' : 'CSV格式，逗号分隔'})`, 'primary');
+    console.log('状态已更新，开始解析文件内容...');
+  
     let csvContent = '';
     const uint8Array = new Uint8Array(demControlFileBuffer);
     
@@ -645,6 +995,56 @@ function parseDemControlFileWithSelectedEncoding() {
     // 解析DemControl文件
     const rows = csvContent.split(/\r?\n/).filter(row => row.trim() !== '');
     if (rows.length === 0) throw new Error('文件无有效数据');
+    
+    // 自动检测分隔符
+    function detectDelimiter(sampleRows) {
+      const counts = { ',': 0, '\t': 0, ' ': 0 };
+      const avgFieldsPerRow = {};
+      
+      // 分析前10行数据
+      const analysisRows = sampleRows.slice(0, Math.min(10, sampleRows.length));
+      
+      // 计算每种分隔符的出现次数和平均字段数
+      analysisRows.forEach(row => {
+        // 计算逗号数量
+        const commaMatches = row.match(/,/g);
+        if (commaMatches) counts[','] += commaMatches.length;
+        
+        // 计算TAB数量
+        const tabMatches = row.match(/\t/g);
+        if (tabMatches) counts['\t'] += tabMatches.length;
+        
+        // 计算连续空格组数
+        const spaceMatches = row.match(/\s+/g);
+        if (spaceMatches) counts[' '] += spaceMatches.length;
+      });
+      
+      // 计算每种分隔符的平均字段数
+      avgFieldsPerRow[','] = analysisRows.length > 0 ? counts[','] / analysisRows.length : 0;
+      avgFieldsPerRow['\t'] = analysisRows.length > 0 ? counts['\t'] / analysisRows.length : 0;
+      avgFieldsPerRow[' '] = analysisRows.length > 0 ? counts[' '] / analysisRows.length : 0;
+      
+      // 按照优先级选择分隔符
+      // 1. 优先使用逗号，平均每行至少有1个逗号
+      if (avgFieldsPerRow[','] >= 1) {
+        return ',';
+      }
+      // 2. 如果没有足够的逗号，使用TAB，平均每行至少有1个TAB
+      else if (avgFieldsPerRow['\t'] >= 1) {
+        return '\t';
+      }
+      // 3. 如果没有足够的TAB，使用空格
+      else {
+        return ' ';
+      }
+    }
+    
+    // 检测分隔符
+    const detectedDelimiter = detectDelimiter(rows);
+    if (detectedDelimiter !== delimiter) {
+      delimiter = detectedDelimiter;
+      updateStatus(`🔍 自动检测到分隔符：${delimiter === ' ' ? '空格' : delimiter === '\t' ? 'TAB' : delimiter}`, 'info');
+    }
     
     // 清空原有时间列表
     demControlTimeList = [];
@@ -686,17 +1086,22 @@ function parseDemControlFileWithSelectedEncoding() {
       throw new Error('文件中未找到有效时间数据，请检查第一列格式');
     }
     
+    console.log('解析完成，找到时间点数量:', demControlTimeList.length);
+    
     // 显示时间选择下拉框并加载时间选项
-    timeSelectorContainer.classList.remove('d-none');
+    if (timeSelectorContainer) {
+      timeSelectorContainer.classList.remove('d-none');
+    }
     renderTimeDropdown();
     
     demControlFileSelected = true;
     // 更新状态
+    console.log('准备更新解析成功状态...');
     updateStatus(`✅ 文件解析成功【${demControlFileName}】：使用${finalEncoding.toUpperCase()}编码，共找到${demControlTimeList.length}个有效时间点`, 'success');
-    
+    console.log('DemControl文件解析完成');
   } catch (error) {
-    updateStatus(`❌ 文件解析失败【${demControlFileName}】：${error.message}，请尝试更换编码格式`, 'danger');
     console.error('解析错误详情：', error);
+    updateStatus(`❌ 文件解析失败【${demControlFileName}】：${error.message}，请尝试更换编码格式`, 'danger');
   }
 }
 
@@ -963,15 +1368,24 @@ function drawLineChart() {
     return;
   }
 
-  const yColIndexes = Array.from(yAxisSelect.selectedOptions)
+  // 获取左侧Y轴选择的列
+  const y1ColIndexes = Array.from(yAxisSelect.selectedOptions)
     .map(option => parseInt(option.value))
     .filter(index => !isNaN(index) && index < csvHeaders.length);
   
-  if (yColIndexes.length === 0) {
+  // 获取右侧Y轴选择的列
+  const y2ColIndexes = Array.from(yAxis2Select.selectedOptions)
+    .map(option => parseInt(option.value))
+    .filter(index => !isNaN(index) && index < csvHeaders.length);
+  
+  // 合并所有Y轴列并去重
+  const allYColIndexes = [...new Set([...y1ColIndexes, ...y2ColIndexes])];
+  
+  if (allYColIndexes.length === 0) {
     updateStatus(`❌ 请至少选择一个Y轴列`, 'danger');
     return;
   }
-  if (yColIndexes.some(index => index === xColIndex)) {
+  if (allYColIndexes.some(index => index === xColIndex)) {
     updateStatus(`❌ Y轴列不能与X轴列重复`, 'danger');
     return;
   }
@@ -1012,8 +1426,10 @@ function drawLineChart() {
   // 提取多列Y轴数据
   const datasets = [];
   let totalDataPoints = 0;
+  let idx = 0;
   
-  yColIndexes.forEach((yColIndex, idx) => {
+  // 处理左侧Y轴数据
+  y1ColIndexes.forEach(yColIndex => {
       const yData = [];
       const textMapping = new Map();
       const reverseTextMapping = new Map();
@@ -1074,7 +1490,7 @@ function drawLineChart() {
       // 分配颜色
       const color = chartColors[idx % chartColors.length];
       
-      // 创建数据集
+      // 创建数据集 - 左侧Y轴
       datasets.push({
         label: csvHeaders[yColIndex]?.trim() || `Y轴${idx+1}`,
         data: yData,
@@ -1087,12 +1503,99 @@ function drawLineChart() {
         pointHoverRadius: 4,
         pointBackgroundColor: color.border,
         pointBorderWidth: 1,
+        yAxisID: 'y', // 左侧Y轴
         // 保存文字映射关系，用于tooltip显示
         textMapping: textMapping,
         reverseTextMapping: reverseTextMapping,
         rowTextValues: rowTextValues
       });
       totalDataPoints += validPoints;
+      idx++;
+    });
+  
+  // 处理右侧Y轴数据
+  y2ColIndexes.forEach(yColIndex => {
+      const yData = [];
+      const textMapping = new Map();
+      const reverseTextMapping = new Map();
+      let textCounter = 1;
+      let validPoints = 0;
+      const rowTextValues = []; // 保存每行的原始文字值
+
+      csvData.forEach((row, rowIdx) => {
+        const xValue = row[xColIndex]?.trim();
+        const yValue = row[yColIndex]?.trim() || '';
+        
+        if (xValue && yValue) {
+          // 处理文字数据
+          let numericValue;
+          if (!isNaN(Number(yValue)) && yValue !== '') {
+            numericValue = Number(yValue);
+            
+            // 过滤掉0值数据，不显示在绘图中
+            if (numericValue === 0) {
+              yData.push(null);
+              rowTextValues.push(null);
+              return;
+            }
+            rowTextValues.push(yValue);
+          } else {
+            // 为特定文字设置固定映射值
+            if (yValue === '失锁' || yValue === '失锁\n' || yValue.trim() === '失锁' || yValue === 'U' || yValue === 'U\n' || yValue.trim() === 'U') {
+              numericValue = 0;
+              textMapping.set(yValue, 0);
+              reverseTextMapping.set(0, yValue === 'U' || yValue === 'U\n' || yValue.trim() === 'U' ? 'U (失锁)' : '失锁');
+            } else if (yValue === '锁定' || yValue === '锁定\n' || yValue.trim() === '锁定' || yValue === 'L' || yValue === 'L\n' || yValue.trim() === 'L') {
+              numericValue = 1;
+              textMapping.set(yValue, 1);
+              reverseTextMapping.set(1, yValue === 'L' || yValue === 'L\n' || yValue.trim() === 'L' ? 'L (锁定)' : '锁定');
+            } else if (yValue === '不工作' || yValue === '不工作\n' || yValue.trim() === '不工作') {
+              numericValue = -1;
+              textMapping.set(yValue, -1);
+              reverseTextMapping.set(-1, '不工作');
+            } else {
+              // 其他文字使用自动递增映射
+              if (!textMapping.has(yValue)) {
+                textMapping.set(yValue, textCounter++);
+                reverseTextMapping.set(textCounter - 1, yValue);
+              }
+              numericValue = textMapping.get(yValue);
+            }
+            rowTextValues.push(yValue);
+          }
+          
+          yData.push(numericValue);
+          validPoints++;
+        } else {
+          yData.push(null);
+          rowTextValues.push(null);
+        }
+      });
+
+      // 分配颜色
+      const color = chartColors[idx % chartColors.length];
+      
+      // 创建数据集 - 右侧Y轴
+      datasets.push({
+        label: csvHeaders[yColIndex]?.trim() || `Y轴${idx+1}`,
+        data: yData,
+        borderColor: color.border,
+        backgroundColor: color.background,
+        borderWidth: 2,
+        tension: 0.2,
+        fill: false,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        pointBackgroundColor: color.border,
+        pointBorderWidth: 1,
+        yAxisID: 'y1', // 右侧Y轴
+        // 保存文字映射关系，用于tooltip显示
+        textMapping: textMapping,
+        reverseTextMapping: reverseTextMapping,
+        rowTextValues: rowTextValues
+      });
+      totalDataPoints += validPoints;
+      idx++;
     });
 
   if (xData.length === 0 || totalDataPoints === 0) {
@@ -1108,19 +1611,37 @@ function drawLineChart() {
     xColIndex: xColIndex
   };
 
-  // 应用时间范围过滤
+  // 应用X轴范围过滤
   let filteredXData = xData;
   let filteredDatasets = datasets;
   if (selectedTimeRange) {
-    const { start, end } = selectedTimeRange;
+    const { start, end, isIndexBased } = selectedTimeRange;
     const filteredIndices = [];
     
-    // 找出在时间范围内的数据索引
-    xTimeValues.forEach((timeValue, index) => {
-      if (timeValue && timeValue >= start && timeValue <= end) {
-        filteredIndices.push(index);
+    if (isIndexBased) {
+      // 基于索引的过滤
+      for (let i = start; i <= end; i++) {
+        if (i >= 0 && i < xData.length) {
+          filteredIndices.push(i);
+        }
       }
-    });
+    } else {
+      // 基于时间的过滤
+      const xHeader = csvHeaders[xColIndex]?.trim() || '';
+      const isTimeCol = isTimeColumn(xHeader);
+      
+      if (isTimeCol) {
+        // 时间类型X轴：基于时间值过滤
+        xTimeValues.forEach((timeValue, index) => {
+          if (timeValue && timeValue >= start && timeValue <= end) {
+            filteredIndices.push(index);
+          }
+        });
+      } else {
+        // 非时间类型X轴：不过滤
+        filteredIndices.push(...Array.from({ length: xData.length }, (_, i) => i));
+      }
+    }
     
     // 过滤数据
     if (filteredIndices.length > 0) {
@@ -1143,8 +1664,11 @@ function drawLineChart() {
     chartInstance = null;
   }
   
-  // 显示canvas
+  // 显示canvas并设置固定高度
   lineChart.style.display = 'block';
+  lineChart.style.height = '400px'; // 进一步减小图表高度
+  chartContainer.style.height = '450px'; // 设置图表容器固定高度
+  chartContainer.style.overflow = 'hidden'; // 防止内容溢出
   chartContainer.innerHTML = '';
   chartContainer.appendChild(lineChart);
 
@@ -1168,6 +1692,7 @@ function drawLineChart() {
       responsive: true,
       maintainAspectRatio: false,
       backgroundColor: 'white',
+      animation: false,
       scales: {
         x: {
           title: { 
@@ -1193,50 +1718,111 @@ function drawLineChart() {
         y: {
           title: { 
             display: true, 
-            text: '数值/文字映射值', 
+            text: '左侧Y轴', 
             font: { size: 14, weight: 'bold', family: "'Microsoft YaHei', sans-serif" } 
           },
-          beginAtZero: true,
+          position: 'left',
+          beginAtZero: false, // 不再强制从0开始，让Y轴根据数据范围自动调整
           grid: { color: 'rgba(0, 0, 0, 0.05)' },
           ticks: { font: { family: "'Microsoft YaHei', sans-serif" } },
           // 添加数据范围之外的空白区域
           suggestedMin: function(context) {
-            const datasets = context.chart.data.datasets;
+            const datasets = context.chart.data.datasets.filter(dataset => dataset.yAxisID === 'y' && !dataset.hidden);
             if (datasets.length === 0) return 0;
             
             let min = Infinity;
+            let hasValidValue = false;
             datasets.forEach(dataset => {
               dataset.data.forEach(value => {
-                if (value !== null && value !== undefined && !isNaN(value) && value < min) {
-                  min = value;
+                if (value !== null && value !== undefined && !isNaN(value)) {
+                  hasValidValue = true;
+                  if (value < min) {
+                    min = value;
+                  }
                 }
               });
             });
-            return min > 0 ? 0 : min * 1.1; // 最小值以下留10%空白
+            if (!hasValidValue) return 0;
+            // 最小值以下留10%空白，如果最小值为正数，则从0开始
+            return min > 0 ? 0 : min * 1.1;
           },
           suggestedMax: function(context) {
-            const datasets = context.chart.data.datasets;
-            if (datasets.length === 0) return 100;
+            const datasets = context.chart.data.datasets.filter(dataset => dataset.yAxisID === 'y' && !dataset.hidden);
+            if (datasets.length === 0) return 1;
             
             let max = -Infinity;
+            let hasValidValue = false;
             datasets.forEach(dataset => {
               dataset.data.forEach(value => {
-                if (value !== null && value !== undefined && !isNaN(value) && value > max) {
-                  max = value;
+                if (value !== null && value !== undefined && !isNaN(value)) {
+                  hasValidValue = true;
+                  if (value > max) {
+                    max = value;
+                  }
                 }
               });
             });
-            return max * 1.1; // 最大值以上留10%空白
+            if (!hasValidValue) return 1;
+            // 最大值以上留10%空白，不再设置最小阈值
+            return max > 0 ? max * 1.1 : 1;
+          }
+        },
+        y1: {
+          title: { 
+            display: true, 
+            text: '右侧Y轴', 
+            font: { size: 14, weight: 'bold', family: "'Microsoft YaHei', sans-serif" } 
+          },
+          position: 'right',
+          beginAtZero: false, // 不再强制从0开始，让Y轴根据数据范围自动调整
+          grid: { color: 'rgba(0, 0, 0, 0.05)' },
+          ticks: { font: { family: "'Microsoft YaHei', sans-serif" } },
+          // 添加数据范围之外的空白区域
+          suggestedMin: function(context) {
+            const datasets = context.chart.data.datasets.filter(dataset => dataset.yAxisID === 'y1' && !dataset.hidden);
+            if (datasets.length === 0) return 0;
+            
+            let min = Infinity;
+            let hasValidValue = false;
+            datasets.forEach(dataset => {
+              dataset.data.forEach(value => {
+                if (value !== null && value !== undefined && !isNaN(value)) {
+                  hasValidValue = true;
+                  if (value < min) {
+                    min = value;
+                  }
+                }
+              });
+            });
+            if (!hasValidValue) return 0;
+            // 最小值以下留10%空白，如果最小值为正数，则从0开始
+            return min > 0 ? 0 : min * 1.1;
+          },
+          suggestedMax: function(context) {
+            const datasets = context.chart.data.datasets.filter(dataset => dataset.yAxisID === 'y1' && !dataset.hidden);
+            if (datasets.length === 0) return 1;
+            
+            let max = -Infinity;
+            let hasValidValue = false;
+            datasets.forEach(dataset => {
+              dataset.data.forEach(value => {
+                if (value !== null && value !== undefined && !isNaN(value)) {
+                  hasValidValue = true;
+                  if (value > max) {
+                    max = value;
+                  }
+                }
+              });
+            });
+            if (!hasValidValue) return 1;
+            // 最大值以上留10%空白，不再设置最小阈值
+            return max > 0 ? max * 1.1 : 1;
           }
         }
       },
       plugins: {
         legend: { 
-          position: 'top', 
-          labels: { 
-            boxWidth: 12, 
-            font: { size: 12, family: "'Microsoft YaHei', sans-serif" } 
-          } 
+          display: false // 禁用默认图例，使用自定义图例
         },
         tooltip: { 
           mode: 'index', 
@@ -1276,6 +1862,9 @@ function drawLineChart() {
     }
   });
 
+  // 创建自定义图例
+  createCustomLegend(filteredDatasets);
+  
   // 启用导出按钮
   enableControls(['exportChartBtn']);
   
@@ -1285,7 +1874,256 @@ function drawLineChart() {
   // 初始化时间范围选择器的默认值
   initTimeRangeSelector();
   
-  updateStatus(`✅ 折线图绘制成功：X轴【${csvHeaders[xColIndex]?.trim() || '列'}】，Y轴共${yColIndexes.length}列，有效数据点${totalDataPoints}个`, 'success');
+  // 显示X轴拖动条
+  const xAxisSliderContainer = document.getElementById('xAxisSliderContainer');
+  if (xAxisSliderContainer) {
+    xAxisSliderContainer.classList.remove('d-none');
+    
+    // 初始化拖动条的时间值
+    const sliderValueMin = document.getElementById('sliderValueMin');
+    const sliderValueMax = document.getElementById('sliderValueMax');
+    if (sliderValueMin && sliderValueMax) {
+      // 检查X轴是否为时间类型
+      const xHeader = csvHeaders[xColIndex]?.trim() || '';
+      const isTimeCol = isTimeColumn(xHeader);
+      
+      if (isTimeCol && originalChartData && originalChartData.xTimeValues) {
+        // 找出所有有效的时间值
+        const validTimeValues = originalChartData.xTimeValues.filter(time => time !== null);
+        if (validTimeValues.length > 0) {
+          // 获取最小和最大时间值
+          const minTime = new Date(Math.min(...validTimeValues.map(time => time.getTime())));
+          const maxTime = new Date(Math.max(...validTimeValues.map(time => time.getTime())));
+          
+          // 检查是否有日期信息
+          const hasDateInfo = validTimeValues.some(time => {
+            const today = new Date();
+            return time.getFullYear() !== today.getFullYear() || 
+                   time.getMonth() !== today.getMonth() || 
+                   time.getDate() !== today.getDate();
+          });
+          
+          // 根据是否有日期信息格式化显示
+          if (hasDateInfo) {
+            sliderValueMin.textContent = minTime.toLocaleString();
+            sliderValueMax.textContent = maxTime.toLocaleString();
+          } else {
+            sliderValueMin.textContent = minTime.toLocaleTimeString();
+            sliderValueMax.textContent = maxTime.toLocaleTimeString();
+          }
+        }
+      }
+    }
+  }
+  
+  updateStatus(`✅ 折线图绘制成功：X轴【${csvHeaders[xColIndex]?.trim() || '列'}】，Y轴共${allYColIndexes.length}列，有效数据点${totalDataPoints}个`, 'success');
+}
+
+// 创建自定义图例，分开显示左侧和右侧Y轴的曲线
+function createCustomLegend(datasets) {
+  // 移除旧的图例容器
+  const oldLegend = document.querySelector('.custom-legend');
+  if (oldLegend && oldLegend.parentNode) {
+    oldLegend.parentNode.removeChild(oldLegend);
+  }
+  
+  // 创建新的图例容器
+  const legendContainer = document.createElement('div');
+  legendContainer.className = 'custom-legend';
+  legendContainer.style.cssText = `
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+    margin-bottom: 30px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex-wrap: wrap;
+    max-width: 100%;
+  `;
+  
+  // 分离左侧和右侧Y轴的数据集
+  const leftYAxisDatasets = datasets.filter(dataset => dataset.yAxisID === 'y');
+  const rightYAxisDatasets = datasets.filter(dataset => dataset.yAxisID === 'y1');
+  
+  // 创建左侧Y轴图例
+  if (leftYAxisDatasets.length > 0) {
+    const leftLegend = document.createElement('div');
+    leftLegend.className = 'legend-section';
+    leftLegend.style.cssText = `
+      flex: 1;
+      margin: 0 10px;
+    `;
+    
+    const leftTitle = document.createElement('h6');
+    leftTitle.textContent = '左侧Y轴曲线';
+    leftTitle.style.cssText = `
+      margin-bottom: 10px;
+      font-family: 'Microsoft YaHei', sans-serif;
+      color: #495057;
+      text-align: center;
+    `;
+    leftLegend.appendChild(leftTitle);
+    
+    leftYAxisDatasets.forEach(dataset => {
+      const legendItem = document.createElement('div');
+      legendItem.className = 'legend-item';
+      legendItem.style.cssText = `
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+        font-family: 'Microsoft YaHei', sans-serif;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 2px 5px;
+        border-radius: 4px;
+      `;
+      
+      // 添加悬停效果
+      legendItem.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+      });
+      
+      legendItem.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = 'transparent';
+      });
+      
+      const colorBox = document.createElement('span');
+      colorBox.style.cssText = `
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        background-color: ${dataset.borderColor};
+        margin-right: 8px;
+        border-radius: 2px;
+        opacity: ${dataset.hidden ? '0.5' : '1'};
+      `;
+      
+      const label = document.createElement('span');
+      label.textContent = dataset.label;
+      label.style.opacity = dataset.hidden ? '0.5' : '1';
+      label.style.textDecoration = dataset.hidden ? 'line-through' : 'none';
+      
+      // 添加点击事件，切换数据集可见性
+      legendItem.addEventListener('click', function() {
+        // 切换数据集可见性
+        dataset.hidden = !dataset.hidden;
+        // 更新图表
+        chartInstance.update();
+        // 更新图例项外观
+        if (dataset.hidden) {
+          label.style.opacity = '0.5';
+          label.style.textDecoration = 'line-through';
+          colorBox.style.opacity = '0.5';
+        } else {
+          label.style.opacity = '1';
+          label.style.textDecoration = 'none';
+          colorBox.style.opacity = '1';
+        }
+      });
+      
+      legendItem.appendChild(colorBox);
+      legendItem.appendChild(label);
+      leftLegend.appendChild(legendItem);
+    });
+    
+    legendContainer.appendChild(leftLegend);
+  }
+  
+  // 创建右侧Y轴图例
+  if (rightYAxisDatasets.length > 0) {
+    const rightLegend = document.createElement('div');
+    rightLegend.className = 'legend-section';
+    rightLegend.style.cssText = `
+      flex: 1;
+      margin: 0 10px;
+    `;
+    
+    const rightTitle = document.createElement('h6');
+    rightTitle.textContent = '右侧Y轴曲线';
+    rightTitle.style.cssText = `
+      margin-bottom: 10px;
+      font-family: 'Microsoft YaHei', sans-serif;
+      color: #495057;
+      text-align: center;
+    `;
+    rightLegend.appendChild(rightTitle);
+    
+    rightYAxisDatasets.forEach(dataset => {
+      const legendItem = document.createElement('div');
+      legendItem.className = 'legend-item';
+      legendItem.style.cssText = `
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+        font-family: 'Microsoft YaHei', sans-serif;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 2px 5px;
+        border-radius: 4px;
+      `;
+      
+      // 添加悬停效果
+      legendItem.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+      });
+      
+      legendItem.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = 'transparent';
+      });
+      
+      const colorBox = document.createElement('span');
+      colorBox.style.cssText = `
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        background-color: ${dataset.borderColor};
+        margin-right: 8px;
+        border-radius: 2px;
+        opacity: ${dataset.hidden ? '0.5' : '1'};
+      `;
+      
+      const label = document.createElement('span');
+      label.textContent = dataset.label;
+      label.style.opacity = dataset.hidden ? '0.5' : '1';
+      label.style.textDecoration = dataset.hidden ? 'line-through' : 'none';
+      
+      // 添加点击事件，切换数据集可见性
+      legendItem.addEventListener('click', function() {
+        // 切换数据集可见性
+        dataset.hidden = !dataset.hidden;
+        // 更新图表
+        chartInstance.update();
+        // 更新图例项外观
+        if (dataset.hidden) {
+          label.style.opacity = '0.5';
+          label.style.textDecoration = 'line-through';
+          colorBox.style.opacity = '0.5';
+        } else {
+          label.style.opacity = '1';
+          label.style.textDecoration = 'none';
+          colorBox.style.opacity = '1';
+        }
+      });
+      
+      legendItem.appendChild(colorBox);
+      legendItem.appendChild(label);
+      rightLegend.appendChild(legendItem);
+    });
+    
+    legendContainer.appendChild(rightLegend);
+  }
+  
+  // 将图例添加到图表容器外部
+  if (legendContainer.children.length > 0) {
+    // 找到图表容器
+    const chartContainer = document.getElementById('chartContainer');
+    if (chartContainer && chartContainer.parentNode) {
+      // 在图表容器前添加图例
+      chartContainer.parentNode.insertBefore(legendContainer, chartContainer);
+    }
+  }
 }
 
 // 导出图表为图片
@@ -1411,11 +2249,12 @@ function clearAllFiles() {
   timeSelectorSelect.innerHTML = '';
   
   // 禁用所有按钮
-  disableControls(['xAxisSelect', 'yAxisSelect', 'drawChartBtn', 'filterByControlBtn', 'exportChartBtn', 'resetDataBtn']);
+  disableControls(['xAxisSelect', 'yAxisSelect', 'yAxis2Select', 'drawChartBtn', 'filterByControlBtn', 'exportChartBtn', 'resetDataBtn']);
   
   // 重置选择器
   xAxisSelect.innerHTML = '<option value="">请先上传DemDec数据文件</option>';
   yAxisSelect.innerHTML = '<option value="">请先上传DemDec数据文件</option>';
+  yAxis2Select.innerHTML = '<option value="">请先上传DemDec数据文件</option>';
   
   // 更新状态
   updateStatus(`🧹 已清空所有文件，恢复初始状态`, 'info');
@@ -1429,31 +2268,83 @@ function parseCSVLine(line, delimiter = ',') {
     return [];
   }
   
-  // 简单分割方法，支持带引号的字段
-  const result = [];
-  let currentField = '';
-  let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
+  // 对于空格分隔的文件，特殊处理：将连续空格视为单个分隔符
+  if (delimiter === ' ') {
+    // 先移除所有逗号和TAB，然后按连续空格分割
+    const processedLine = line.replace(/,/g, '').replace(/\t/g, '');
+    return processedLine.trim().split(/\s+/).map(field => field.replace(/^["']|["']$/g, '').trim());
+  }
+  // 对于逗号分隔的文件
+  else if (delimiter === ',') {
+    // 简单分割方法，支持带引号的字段
+    const result = [];
+    let currentField = '';
+    let inQuotes = false;
     
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === delimiter && !inQuotes) {
-      // 移除多余的引号
-      currentField = currentField.replace(/^["']|["']$/g, '').trim();
-      result.push(currentField);
-      currentField = '';
-    } else {
-      currentField += char;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === delimiter && !inQuotes) {
+        // 移除多余的引号和空格
+        currentField = currentField.replace(/^["']|["']$/g, '').replace(/\s+/g, ' ').trim();
+        result.push(currentField);
+        currentField = '';
+      } else if (!inQuotes && (char === '\t' || char === ' ')) {
+        // 在非引号内，将TAB和空格替换为单个空格
+        currentField += ' ';
+      } else {
+        currentField += char;
+      }
     }
+    
+    // 添加最后一个字段
+    currentField = currentField.replace(/^["']|["']$/g, '').replace(/\s+/g, ' ').trim();
+    result.push(currentField);
+    
+    return result;
+  }
+  // 对于TAB分隔的文件
+  else if (delimiter === '\t') {
+    // 按TAB分割，然后处理每个字段
+    const fields = line.split('\t').map(field => {
+      // 移除多余的引号、逗号和空格
+      return field.replace(/^["']|["']$/g, '').replace(/,/g, '').replace(/\s+/g, ' ').trim();
+    });
+    
+    // 检测是否为新格式（除第一列外，其他列包含冒号）
+    const isNewFormat = fields.length > 1 && fields.slice(1).some(field => field.includes(':'));
+    
+    if (isNewFormat) {
+      // 处理新格式：第一列是时间，其他列是 "项目标题:数值"
+      const processedFields = [fields[0]]; // 保留第一列时间
+      
+      // 处理其他列
+      fields.slice(1).forEach(field => {
+        if (field.includes(':')) {
+          // 提取冒号后面的数值部分
+          const parts = field.split(':');
+          if (parts.length >= 2) {
+            // 移除数值部分的空格并添加到结果中
+            const value = parts.slice(1).join(':').trim();
+            processedFields.push(value);
+          } else {
+            processedFields.push(field);
+          }
+        } else {
+          processedFields.push(field);
+        }
+      });
+      
+      return processedFields;
+    }
+    
+    return fields;
   }
   
-  // 添加最后一个字段
-  currentField = currentField.replace(/^["']|["']$/g, '').trim();
-  result.push(currentField);
-  
-  return result;
+  // 默认情况
+  return line.split(delimiter).map(field => field.replace(/^["']|["']$/g, '').trim());
 }
 
 // 渲染表格（支持分页）
@@ -1621,6 +2512,16 @@ function initAxisSelector() {
   
   xAxisSelect.innerHTML = '';
   yAxisSelect.innerHTML = '';
+  yAxis2Select.innerHTML = '';
+
+  // 查找时间相关列的索引
+  let timeColumnIndex = -1;
+  csvHeaders.forEach((header, index) => {
+    const displayName = header.trim() || `列${index + 1}`;
+    if (isTimeColumn(displayName) && timeColumnIndex === -1) {
+      timeColumnIndex = index;
+    }
+  });
 
   csvHeaders.forEach((header, index) => {
     const displayName = header.trim() || `列${index + 1}`;
@@ -1628,23 +2529,44 @@ function initAxisSelector() {
     const xOption = document.createElement('option');
     xOption.value = index;
     xOption.textContent = displayName;
-    if (index === 0) xOption.selected = true;
+    // 优先选择时间相关列，否则选择第一列
+    if ((timeColumnIndex !== -1 && index === timeColumnIndex) || (timeColumnIndex === -1 && index === 0)) {
+      xOption.selected = true;
+    }
     xAxisSelect.appendChild(xOption);
 
     // Y轴选项（排除时间相关列）
-    if (!isTimeColumn(displayName)) {
-      const yOption = document.createElement('option');
-      yOption.value = index;
-      yOption.textContent = displayName;
-      if (yAxisSelect.options.length === 0) yOption.selected = true;
-      yAxisSelect.appendChild(yOption);
-    }
+      if (!isTimeColumn(displayName)) {
+        const yOption = document.createElement('option');
+        yOption.value = index;
+        yOption.textContent = displayName;
+        yAxisSelect.appendChild(yOption);
+        
+        // 右侧Y轴选项
+        const y2Option = document.createElement('option');
+        y2Option.value = index;
+        y2Option.textContent = displayName;
+        yAxis2Select.appendChild(y2Option);
+      }
   });
+  
+  // 清除之前的Y轴选择，允许用户自由选择
+  yAxisSelect.selectedIndex = -1;
+  yAxis2Select.selectedIndex = -1;
   
   // 确保控件启用
   xAxisSelect.disabled = false;
   yAxisSelect.disabled = false;
+  yAxis2Select.disabled = false;
   drawChartBtn.disabled = false;
+  
+  // 确保xAxisSelect.value被正确设置为选中的选项的值
+  const selectedOption = xAxisSelect.querySelector('option[selected]');
+  if (selectedOption) {
+    xAxisSelect.value = selectedOption.value;
+  }
+  // 更新时间范围选择器的可见性，确保在读入文件后就显示
+  updateTimeRangeSelectorVisibility();
 }
 
 // 初始化时间范围选择器
@@ -1655,61 +2577,219 @@ function initTimeRangeSelector() {
   
   if (!timeRangeSelector || !timeRangeStart || !timeRangeEnd) return;
   
-  // 检查是否有原始图表数据
-  if (!originalChartData || !originalChartData.xTimeValues) return;
+  // 检查X轴类型
+  const xColIndex = parseInt(xAxisSelect.value);
+  if (isNaN(xColIndex) || xColIndex >= csvHeaders.length) return;
   
-  // 找出所有有效的时间值
-  const validTimeValues = originalChartData.xTimeValues.filter(time => time !== null);
-  if (validTimeValues.length === 0) return;
+  const xHeader = csvHeaders[xColIndex]?.trim() || '';
+  const isTimeCol = isTimeColumn(xHeader);
   
-  // 格式化时间为datetime-local输入框支持的格式
-  const formatDateTimeLocal = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-  };
-  
-  // 如果用户已经选择了时间范围，保持用户的选择
-  if (selectedTimeRange) {
-    timeRangeStart.value = formatDateTimeLocal(selectedTimeRange.start);
-    timeRangeEnd.value = formatDateTimeLocal(selectedTimeRange.end);
+  if (isTimeCol) {
+    // 从csvData中提取时间值
+    const xTimeValues = [];
+    csvData.forEach(row => {
+      const xValue = row[xColIndex]?.trim() || '';
+      
+      // 尝试解析时间值
+      let timeValue = null;
+      try {
+        // 尝试不同的时间格式解析
+        let rowTime = new Date(xValue);
+        if (isNaN(rowTime.getTime())) {
+          // 尝试解析 21:42:29:450 格式
+          const timeMatch = xValue.match(/(\d{2}):(\d{2}):(\d{2}):(\d{3})/);
+          if (timeMatch) {
+            const [, hh, mm, ss, ms] = timeMatch;
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            rowTime = new Date(`${year}-${month}-${day} ${hh}:${mm}:${ss}.${ms}`);
+          } else {
+            // 尝试解析其他常见时间格式
+            // 格式1: 2023-12-31 23:59:59
+            const format1Match = xValue.match(/(\d{4})[-/](\d{2})[-/](\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+            if (format1Match) {
+              const [, year, month, day, hh, mm, ss] = format1Match;
+              rowTime = new Date(`${year}-${month}-${day} ${hh}:${mm}:${ss}`);
+            }
+            // 格式2: 23:59:59
+            else {
+              const format2Match = xValue.match(/(\d{2}):(\d{2}):(\d{2})/);
+              if (format2Match) {
+                const [, hh, mm, ss] = format2Match;
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                rowTime = new Date(`${year}-${month}-${day} ${hh}:${mm}:${ss}`);
+              }
+            }
+          }
+        }
+        if (!isNaN(rowTime.getTime())) {
+          timeValue = rowTime;
+        }
+      } catch (e) {
+        // 忽略时间解析错误
+      }
+      xTimeValues.push(timeValue);
+    });
+    
+    // 找出所有有效的时间值
+    const validTimeValues = xTimeValues.filter(time => time !== null);
+    
+    // 格式化时间为datetime-local输入框支持的格式
+    const formatDateTimeLocal = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    };
+    
+    // 检查原始数据是否包含日期信息
+    let hasDateInfo = false;
+    if (validTimeValues.length > 0) {
+      hasDateInfo = validTimeValues.some(time => {
+        // 检查时间值是否包含非当天的日期
+        const today = new Date();
+        return time.getFullYear() !== today.getFullYear() || 
+               time.getMonth() !== today.getMonth() || 
+               time.getDate() !== today.getDate();
+      });
+    }
+    
+    // 如果用户已经选择了时间范围，保持用户的选择
+    if (selectedTimeRange) {
+      timeRangeStart.value = formatDateTimeLocal(selectedTimeRange.start);
+      timeRangeEnd.value = formatDateTimeLocal(selectedTimeRange.end);
+    } else if (validTimeValues.length > 0) {
+      // 否则设置默认时间范围为数据的最小和最大值
+      const minTime = new Date(Math.min(...validTimeValues.map(time => time.getTime())));
+      const maxTime = new Date(Math.max(...validTimeValues.map(time => time.getTime())));
+      timeRangeStart.value = formatDateTimeLocal(minTime);
+      timeRangeEnd.value = formatDateTimeLocal(maxTime);
+    } else {
+      // 如果没有有效的时间值，设置默认时间范围为当前时间
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      timeRangeStart.value = formatDateTimeLocal(oneHourAgo);
+      timeRangeEnd.value = formatDateTimeLocal(now);
+    }
+    
+    // 根据是否有日期信息调整显示格式
+    const timeRangeInputs = [timeRangeStart, timeRangeEnd];
+    timeRangeInputs.forEach(input => {
+      if (!hasDateInfo) {
+        // 没有日期信息时，添加data-no-date属性以应用CSS样式
+        input.setAttribute('data-no-date', 'true');
+        // 调整输入框类型为time，只显示时间部分
+        input.type = 'time';
+      } else {
+        // 有日期信息时，移除data-no-date属性，恢复为datetime-local类型
+        input.removeAttribute('data-no-date');
+        input.type = 'datetime-local';
+      }
+    });
   } else {
-    // 否则设置默认时间范围为数据的最小和最大值
-    const minTime = new Date(Math.min(...validTimeValues.map(time => time.getTime())));
-    const maxTime = new Date(Math.max(...validTimeValues.map(time => time.getTime())));
-    timeRangeStart.value = formatDateTimeLocal(minTime);
-    timeRangeEnd.value = formatDateTimeLocal(maxTime);
+    // 非时间类型X轴处理
+    // 这里可以添加非时间类型X轴的范围选择初始化逻辑
+    // 例如，对于数值类型的X轴，可以计算数值范围
   }
 }
 
 // 更新时间范围选择器的可见性
 function updateTimeRangeSelectorVisibility() {
   const timeRangeSelector = document.getElementById('timeRangeSelector');
-  if (!timeRangeSelector) return;
+  const xAxisSliderContainer = document.getElementById('xAxisSliderContainer');
+  if (!timeRangeSelector || !xAxisSliderContainer) return;
   
-  // 检查X轴是否选择了时间相关列
+  // 检查X轴是否已选择
   const xColIndex = parseInt(xAxisSelect.value);
   if (isNaN(xColIndex) || xColIndex >= csvHeaders.length) {
     timeRangeSelector.classList.add('d-none');
+    xAxisSliderContainer.classList.add('d-none');
     return;
   }
   
-  const xHeader = csvHeaders[xColIndex]?.trim() || '';
-  const isTimeCol = isTimeColumn(xHeader);
+  // 只要X轴已选择，就显示时间范围选择器
+  timeRangeSelector.classList.remove('d-none');
+  xAxisSliderContainer.classList.remove('d-none');
+  // 初始化时间范围选择器，确保显示正确的时间范围
+  initTimeRangeSelector();
   
-  // 检查是否有有效的时间数据
-  const hasValidTimeData = originalChartData && 
-                          originalChartData.xTimeValues && 
-                          originalChartData.xTimeValues.some(time => time !== null);
-  
-  if (isTimeCol && hasValidTimeData) {
-    timeRangeSelector.classList.remove('d-none');
-  } else {
-    timeRangeSelector.classList.add('d-none');
+  // 初始化X轴范围拖动条的时间值
+  const sliderValueMin = document.getElementById('sliderValueMin');
+  const sliderValueMax = document.getElementById('sliderValueMax');
+  if (sliderValueMin && sliderValueMax) {
+    // 检查X轴是否为时间类型
+    const xHeader = csvHeaders[xColIndex]?.trim() || '';
+    const isTimeCol = isTimeColumn(xHeader);
+    
+    if (isTimeCol) {
+      // 从csvData中提取时间值
+      const xTimeValues = [];
+      csvData.forEach(row => {
+        const xValue = row[xColIndex]?.trim() || '';
+        
+        // 尝试解析时间值
+        let timeValue = null;
+        try {
+          // 尝试不同的时间格式解析
+          let rowTime = new Date(xValue);
+          if (isNaN(rowTime.getTime())) {
+            // 尝试解析 21:42:29:450 格式
+            const timeMatch = xValue.match(/(\d{2}):(\d{2}):(\d{2}):(\d{3})/);
+            if (timeMatch) {
+              const [, hh, mm, ss, ms] = timeMatch;
+              const today = new Date();
+              const year = today.getFullYear();
+              const month = String(today.getMonth() + 1).padStart(2, '0');
+              const day = String(today.getDate()).padStart(2, '0');
+              rowTime = new Date(`${year}-${month}-${day} ${hh}:${mm}:${ss}.${ms}`);
+            }
+          }
+          if (!isNaN(rowTime.getTime())) {
+            timeValue = rowTime;
+          }
+        } catch (e) {
+          // 忽略时间解析错误
+        }
+        xTimeValues.push(timeValue);
+      });
+      
+      // 找出所有有效的时间值
+      const validTimeValues = xTimeValues.filter(time => time !== null);
+      if (validTimeValues.length > 0) {
+        // 获取最小和最大时间值
+        const minTime = new Date(Math.min(...validTimeValues.map(time => time.getTime())));
+        const maxTime = new Date(Math.max(...validTimeValues.map(time => time.getTime())));
+        
+        // 检查是否有日期信息
+        const hasDateInfo = validTimeValues.some(time => {
+          const today = new Date();
+          return time.getFullYear() !== today.getFullYear() || 
+                 time.getMonth() !== today.getMonth() || 
+                 time.getDate() !== today.getDate();
+        });
+        
+        // 根据是否有日期信息格式化显示
+        if (hasDateInfo) {
+          sliderValueMin.textContent = minTime.toLocaleString();
+          sliderValueMax.textContent = maxTime.toLocaleString();
+        } else {
+          sliderValueMin.textContent = minTime.toLocaleTimeString();
+          sliderValueMax.textContent = maxTime.toLocaleTimeString();
+        }
+        
+        // 更新滑块的位置
+        sliderValueMin.style.left = '0%';
+        sliderValueMax.style.left = '100%';
+      }
+    }
   }
 }
 
@@ -1723,42 +2803,104 @@ function applyTimeRange() {
   const startTimeStr = timeRangeStart.value;
   const endTimeStr = timeRangeEnd.value;
   
-  if (!startTimeStr || !endTimeStr) {
-    updateStatus(`❌ 请选择完整的时间范围`, 'danger');
+  // 检查X轴类型
+  const xColIndex = parseInt(xAxisSelect.value);
+  if (isNaN(xColIndex) || xColIndex >= csvHeaders.length) {
+    updateStatus(`❌ 请选择有效的X轴列`, 'danger');
     return;
   }
   
-  const startTime = new Date(startTimeStr);
-  const endTime = new Date(endTimeStr);
+  const xHeader = csvHeaders[xColIndex]?.trim() || '';
+  const isTimeCol = isTimeColumn(xHeader);
   
-  if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-    updateStatus(`❌ 时间格式错误`, 'danger');
-    return;
+  if (isTimeCol) {
+    // 时间类型X轴处理
+    if (!startTimeStr || !endTimeStr) {
+      updateStatus(`❌ 请选择完整的时间范围`, 'danger');
+      return;
+    }
+    
+    let startTime, endTime;
+    
+    // 检查输入框类型，处理不同格式
+    if (timeRangeStart.type === 'time') {
+      // time类型输入框，格式为 HH:MM:SS
+      const today = new Date();
+      const startParts = startTimeStr.split(':');
+      const endParts = endTimeStr.split(':');
+      
+      startTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 
+                         parseInt(startParts[0]), parseInt(startParts[1]), parseInt(startParts[2] || 0));
+      endTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 
+                       parseInt(endParts[0]), parseInt(endParts[1]), parseInt(endParts[2] || 0));
+    } else {
+      // datetime-local类型输入框，直接转换
+      startTime = new Date(startTimeStr);
+      endTime = new Date(endTimeStr);
+    }
+    
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      updateStatus(`❌ 时间格式错误`, 'danger');
+      return;
+    }
+    
+    if (startTime > endTime) {
+      updateStatus(`❌ 开始时间不能晚于结束时间`, 'danger');
+      return;
+    }
+    
+    // 保存选择的时间范围
+    selectedTimeRange = { start: startTime, end: endTime };
+    
+    // 重新绘制图表
+    drawLineChart();
+    
+    // 根据是否有日期信息选择不同的显示格式
+    const hasDateInfo = startTime.getFullYear() !== new Date().getFullYear() || 
+                       startTime.getMonth() !== new Date().getMonth() || 
+                       startTime.getDate() !== new Date().getDate();
+    
+    if (hasDateInfo) {
+      updateStatus(`✅ 时间范围应用成功：${startTime.toLocaleString()} ~ ${endTime.toLocaleString()}`, 'success');
+    } else {
+      updateStatus(`✅ 时间范围应用成功：${startTime.toLocaleTimeString()} ~ ${endTime.toLocaleTimeString()}`, 'success');
+    }
+  } else {
+    // 非时间类型X轴处理
+    // 这里可以添加非时间类型X轴的范围选择逻辑
+    // 例如，对于数值类型的X轴，可以添加输入框来选择数值范围
+    updateStatus(`ℹ️ 非时间类型X轴的范围调整功能正在开发中`, 'info');
   }
-  
-  if (startTime > endTime) {
-    updateStatus(`❌ 开始时间不能晚于结束时间`, 'danger');
-    return;
-  }
-  
-  // 保存选择的时间范围
-  selectedTimeRange = { start: startTime, end: endTime };
-  
-  // 重新绘制图表
-  drawLineChart();
-  
-  updateStatus(`✅ 时间范围应用成功：${startTime.toLocaleString()} ~ ${endTime.toLocaleString()}`, 'success');
 }
 
 // 重置时间范围
 function resetTimeRange() {
   const timeRangeStart = document.getElementById('timeRangeStart');
   const timeRangeEnd = document.getElementById('timeRangeEnd');
+  const xAxisRangeSliderMin = document.getElementById('xAxisRangeSliderMin');
+  const xAxisRangeSliderMax = document.getElementById('xAxisRangeSliderMax');
+  const sliderHandleMin = document.getElementById('sliderHandleMin');
+  const sliderHandleMax = document.getElementById('sliderHandleMax');
+  const sliderSelectedArea = document.getElementById('sliderSelectedArea');
   
   if (!timeRangeStart || !timeRangeEnd) return;
   
   // 清除时间范围选择
   selectedTimeRange = null;
+  
+  // 重置拖动条
+  if (xAxisRangeSliderMin && xAxisRangeSliderMax) {
+    xAxisRangeSliderMin.value = 0;
+    xAxisRangeSliderMax.value = 100;
+  }
+  
+  // 重置滑块的可视化位置
+  if (sliderHandleMin && sliderHandleMax && sliderSelectedArea) {
+    sliderHandleMin.style.left = '0%';
+    sliderHandleMax.style.left = '100%';
+    sliderSelectedArea.style.left = '0%';
+    sliderSelectedArea.style.width = '100%';
+  }
   
   // 重新初始化时间范围选择器
   initTimeRangeSelector();
@@ -1767,6 +2909,255 @@ function resetTimeRange() {
   drawLineChart();
   
   updateStatus(`✅ 时间范围已重置为全部数据`, 'success');
+}
+
+// 处理X轴拖动条变化
+function handleXAxisSliderChange(event) {
+  const xAxisRangeSliderMin = document.getElementById('xAxisRangeSliderMin');
+  const xAxisRangeSliderMax = document.getElementById('xAxisRangeSliderMax');
+  const timeRangeStart = document.getElementById('timeRangeStart');
+  const timeRangeEnd = document.getElementById('timeRangeEnd');
+  const sliderHandleMin = document.getElementById('sliderHandleMin');
+  const sliderHandleMax = document.getElementById('sliderHandleMax');
+  const sliderSelectedArea = document.getElementById('sliderSelectedArea');
+  const sliderValueMin = document.getElementById('sliderValueMin');
+  const sliderValueMax = document.getElementById('sliderValueMax');
+  
+  if (!xAxisRangeSliderMin || !xAxisRangeSliderMax || !timeRangeStart || !timeRangeEnd || !sliderHandleMin || !sliderHandleMax || !sliderSelectedArea || !sliderValueMin || !sliderValueMax) return;
+  
+  // 检查X轴是否已选择
+  const xColIndex = parseInt(xAxisSelect.value);
+  if (isNaN(xColIndex) || xColIndex >= csvHeaders.length) return;
+  
+  // 检查是否有原始图表数据
+  if (!originalChartData || !originalChartData.xData || originalChartData.xData.length === 0) return;
+  
+  let minValue = parseInt(xAxisRangeSliderMin.value);
+  let maxValue = parseInt(xAxisRangeSliderMax.value);
+  
+  if (isNaN(minValue) || isNaN(maxValue)) return;
+  
+  // 确保最小值小于最大值
+  if (minValue >= maxValue) {
+    if (event && event.target === xAxisRangeSliderMin) {
+      xAxisRangeSliderMin.value = maxValue - 2;
+      minValue = maxValue - 2;
+    } else {
+      xAxisRangeSliderMax.value = minValue + 2;
+      maxValue = minValue + 2;
+    }
+  }
+  
+  // 更新滑块的可视化位置
+  sliderHandleMin.style.left = `${minValue}%`;
+  sliderHandleMax.style.left = `${maxValue}%`;
+  sliderSelectedArea.style.left = `${minValue}%`;
+  sliderSelectedArea.style.width = `${maxValue - minValue}%`;
+  
+  // 计算X轴范围
+  const totalDataPoints = originalChartData.xData.length;
+  const startIndex = Math.floor(totalDataPoints * minValue / 100);
+  const endIndex = Math.min(totalDataPoints - 1, Math.floor(totalDataPoints * maxValue / 100));
+  
+  // 检查X轴是否为时间类型
+  const xHeader = csvHeaders[xColIndex]?.trim() || '';
+  const isTimeCol = isTimeColumn(xHeader);
+  
+  // 更新滑块的可视化位置和坐标值标识
+  if (isTimeCol && originalChartData.xTimeValues) {
+    // 对于时间类型，使用格式化的时间显示
+    const startTime = originalChartData.xTimeValues[startIndex];
+    const endTime = originalChartData.xTimeValues[endIndex];
+    if (startTime && endTime) {
+      // 检查是否有日期部分（如果时间是当天的，可能只需要显示时间）
+      const today = new Date();
+      const isTodayStart = startTime.getFullYear() === today.getFullYear() && 
+                          startTime.getMonth() === today.getMonth() && 
+                          startTime.getDate() === today.getDate();
+      const isTodayEnd = endTime.getFullYear() === today.getFullYear() && 
+                        endTime.getMonth() === today.getMonth() && 
+                        endTime.getDate() === today.getDate();
+      
+      if (isTodayStart && isTodayEnd) {
+        // 只显示时间部分
+        sliderValueMin.textContent = startTime.toLocaleTimeString();
+        sliderValueMax.textContent = endTime.toLocaleTimeString();
+      } else {
+        // 显示完整的日期时间
+        sliderValueMin.textContent = startTime.toLocaleString();
+        sliderValueMax.textContent = endTime.toLocaleString();
+      }
+    } else {
+      // 时间解析失败，使用原始数据
+      sliderValueMin.textContent = originalChartData.xData[startIndex] || '';
+      sliderValueMax.textContent = originalChartData.xData[endIndex] || '';
+    }
+  } else {
+    // 非时间类型，使用原始数据
+    sliderValueMin.textContent = originalChartData.xData[startIndex] || '';
+    sliderValueMax.textContent = originalChartData.xData[endIndex] || '';
+  }
+  sliderValueMin.style.left = `${minValue}%`;
+  sliderValueMax.style.left = `${maxValue}%`;
+  
+  if (isTimeCol && originalChartData.xTimeValues) {
+    // 时间类型X轴处理
+    const startTime = originalChartData.xTimeValues[startIndex];
+    const endTime = originalChartData.xTimeValues[endIndex];
+    
+    if (startTime && endTime) {
+      // 格式化时间为datetime-local输入框支持的格式
+      const formatDateTimeLocal = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      };
+      
+      // 更新时间范围选择器
+      timeRangeStart.value = formatDateTimeLocal(startTime);
+      timeRangeEnd.value = formatDateTimeLocal(endTime);
+      
+      // 保存选择的时间范围
+      selectedTimeRange = { start: startTime, end: endTime };
+      
+      // 重新绘制图表
+      drawLineChart();
+      
+      updateStatus(`✅ X轴范围调整成功：${startTime.toLocaleString()} ~ ${endTime.toLocaleString()}`, 'success');
+    } else {
+      // 时间解析失败，尝试使用索引范围
+      selectedTimeRange = { start: startIndex, end: endIndex, isIndexBased: true };
+      drawLineChart();
+      updateStatus(`✅ X轴范围调整成功：索引 ${startIndex} ~ ${endIndex}`, 'success');
+    }
+  } else {
+    // 非时间类型X轴处理
+    selectedTimeRange = { start: startIndex, end: endIndex, isIndexBased: true };
+    drawLineChart();
+    updateStatus(`✅ X轴范围调整成功：索引 ${startIndex} ~ ${endIndex}`, 'success');
+  }
+}
+
+// 处理从滑块拖动事件中更新X轴范围
+function handleXAxisSliderChangeFromDrag(minValue, maxValue) {
+  const timeRangeStart = document.getElementById('timeRangeStart');
+  const timeRangeEnd = document.getElementById('timeRangeEnd');
+  const sliderHandleMin = document.getElementById('sliderHandleMin');
+  const sliderHandleMax = document.getElementById('sliderHandleMax');
+  const sliderSelectedArea = document.getElementById('sliderSelectedArea');
+  const sliderValueMin = document.getElementById('sliderValueMin');
+  const sliderValueMax = document.getElementById('sliderValueMax');
+  
+  if (!timeRangeStart || !timeRangeEnd || !sliderHandleMin || !sliderHandleMax || !sliderSelectedArea || !sliderValueMin || !sliderValueMax) return;
+  
+  // 检查X轴是否已选择
+  const xColIndex = parseInt(xAxisSelect.value);
+  if (isNaN(xColIndex) || xColIndex >= csvHeaders.length) return;
+  
+  // 检查是否有原始图表数据
+  if (!originalChartData || !originalChartData.xData || originalChartData.xData.length === 0) return;
+  
+  // 确保最小值小于最大值
+  if (minValue >= maxValue) {
+    return;
+  }
+  
+  // 更新滑块的可视化位置
+  sliderHandleMin.style.left = `${minValue}%`;
+  sliderHandleMax.style.left = `${maxValue}%`;
+  sliderSelectedArea.style.left = `${minValue}%`;
+  sliderSelectedArea.style.width = `${maxValue - minValue}%`;
+  
+  // 计算X轴范围
+  const totalDataPoints = originalChartData.xData.length;
+  const startIndex = Math.floor(totalDataPoints * minValue / 100);
+  const endIndex = Math.min(totalDataPoints - 1, Math.floor(totalDataPoints * maxValue / 100));
+  
+  // 检查X轴是否为时间类型
+  const xHeader = csvHeaders[xColIndex]?.trim() || '';
+  const isTimeCol = isTimeColumn(xHeader);
+  
+  // 更新滑块的可视化位置和坐标值标识
+  if (isTimeCol && originalChartData.xTimeValues) {
+    // 对于时间类型，使用格式化的时间显示
+    const startTime = originalChartData.xTimeValues[startIndex];
+    const endTime = originalChartData.xTimeValues[endIndex];
+    if (startTime && endTime) {
+      // 检查是否有日期部分（如果时间是当天的，可能只需要显示时间）
+      const today = new Date();
+      const isTodayStart = startTime.getFullYear() === today.getFullYear() && 
+                          startTime.getMonth() === today.getMonth() && 
+                          startTime.getDate() === today.getDate();
+      const isTodayEnd = endTime.getFullYear() === today.getFullYear() && 
+                        endTime.getMonth() === today.getMonth() && 
+                        endTime.getDate() === today.getDate();
+      
+      if (isTodayStart && isTodayEnd) {
+        // 只显示时间部分
+        sliderValueMin.textContent = startTime.toLocaleTimeString();
+        sliderValueMax.textContent = endTime.toLocaleTimeString();
+      } else {
+        // 显示完整的日期时间
+        sliderValueMin.textContent = startTime.toLocaleString();
+        sliderValueMax.textContent = endTime.toLocaleString();
+      }
+    } else {
+      // 时间解析失败，使用原始数据
+      sliderValueMin.textContent = originalChartData.xData[startIndex] || '';
+      sliderValueMax.textContent = originalChartData.xData[endIndex] || '';
+    }
+  } else {
+    // 非时间类型，使用原始数据
+    sliderValueMin.textContent = originalChartData.xData[startIndex] || '';
+    sliderValueMax.textContent = originalChartData.xData[endIndex] || '';
+  }
+  sliderValueMin.style.left = `${minValue}%`;
+  sliderValueMax.style.left = `${maxValue}%`;
+  
+  if (isTimeCol && originalChartData.xTimeValues) {
+    // 时间类型X轴处理
+    const startTime = originalChartData.xTimeValues[startIndex];
+    const endTime = originalChartData.xTimeValues[endIndex];
+    
+    if (startTime && endTime) {
+      // 格式化时间为datetime-local输入框支持的格式
+      const formatDateTimeLocal = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      };
+      
+      // 更新时间范围选择器
+      timeRangeStart.value = formatDateTimeLocal(startTime);
+      timeRangeEnd.value = formatDateTimeLocal(endTime);
+      
+      // 保存选择的时间范围
+      selectedTimeRange = { start: startTime, end: endTime };
+      
+      // 重新绘制图表
+      drawLineChart();
+      
+      updateStatus(`✅ X轴范围调整成功：${startTime.toLocaleString()} ~ ${endTime.toLocaleString()}`, 'success');
+    } else {
+      // 时间解析失败，尝试使用索引范围
+      selectedTimeRange = { start: startIndex, end: endIndex, isIndexBased: true };
+      drawLineChart();
+      updateStatus(`✅ X轴范围调整成功：索引 ${startIndex} ~ ${endIndex}`, 'success');
+    }
+  } else {
+    // 非时间类型X轴处理
+    selectedTimeRange = { start: startIndex, end: endIndex, isIndexBased: true };
+    drawLineChart();
+    updateStatus(`✅ X轴范围调整成功：索引 ${startIndex} ~ ${endIndex}`, 'success');
+  }
 }
 
 // 自动设置时间范围
@@ -2014,6 +3405,11 @@ function autoTimeRange() {
 
 // 更新状态提示
 function updateStatus(message, type) {
+  console.log('更新状态:', message, '类型:', type);
+  // 确保statusText已初始化
+  if (!statusText) {
+    statusText = document.getElementById('statusText');
+  }
   if (statusText) {
     statusText.textContent = message;
     // 重置样式
@@ -2038,6 +3434,9 @@ function updateStatus(message, type) {
         statusText.classList.add('text-secondary', 'bg-light', 'border', 'border-secondary');
         break;
     }
+    console.log('状态已更新');
+  } else {
+    console.error('statusText元素未找到');
   }
 }
 // 启用控件
