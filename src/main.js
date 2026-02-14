@@ -312,7 +312,34 @@ document.addEventListener('DOMContentLoaded', function() {
   initTableToggle();
   
   // 初始化时间范围选择器
-  initTimeRangeSelector();
+    initTimeRangeSelector();
+    
+    // 为Excel工作表选择按钮添加事件监听器
+    const confirmSheetBtn = document.getElementById('confirmSheetBtn');
+    if (confirmSheetBtn) {
+      confirmSheetBtn.addEventListener('click', selectExcelSheet);
+      console.log('Excel工作表选择按钮事件监听器已添加');
+    }
+    
+    // 为重置按钮添加事件监听器，重新显示Sheet选择器
+    if (resetDataBtn) {
+      resetDataBtn.addEventListener('click', function() {
+        const sheetSelector = document.getElementById('sheetSelector');
+        if (sheetSelector) {
+          sheetSelector.classList.add('d-none');
+        }
+      });
+    }
+    
+    // 为清空所有文件按钮添加事件监听器，重新显示Sheet选择器
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener('click', function() {
+        const sheetSelector = document.getElementById('sheetSelector');
+        if (sheetSelector) {
+          sheetSelector.classList.add('d-none');
+        }
+      });
+    }
 });
 
 // ========== 拖拽处理函数（完整修复版） ==========
@@ -439,70 +466,356 @@ function handleDemControlFileSelect(e) {
 // 读取文件为ArrayBuffer并自动检测编码解析
 function readFileAsBuffer(file, type) {
   console.log('开始读取文件：', file.name, '类型：', type);
+  console.log('文件大小：', file.size, '字节');
+  console.log('文件类型：', file.type);
   try {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        console.log('文件读取完成，开始处理...');
-        if (type === 'data') {
-          demDecFileBuffer = e.target.result;
-          console.log('DemDec文件缓冲已设置，大小：', demDecFileBuffer.byteLength);
-          
-          // 自动检测编码
-          const uint8Array = new Uint8Array(demDecFileBuffer);
-          detectedDataEncoding = autoDetectEncoding(uint8Array, 'data');
-          console.log('编码检测完成，检测到的编码：', detectedDataEncoding);
-          
-          // 确保dataFileEncoding已初始化
-          if (!dataFileEncoding) {
-            dataFileEncoding = document.getElementById('dataFileEncoding');
-            console.log('dataFileEncoding已初始化：', dataFileEncoding);
-          }
-          
-          // 自动设置编码并解析文件
-          if (dataFileEncoding) {
-            dataFileEncoding.value = 'auto';
-            console.log('编码已设置为auto');
-          }
-          console.log('准备解析DemDec文件...');
-          parseDemDecFileWithSelectedEncoding();
-        } else {
-          demControlFileBuffer = e.target.result;
-          console.log('DemControl文件缓冲已设置，大小：', demControlFileBuffer.byteLength);
-          
-          // 自动检测编码
-          const uint8Array = new Uint8Array(demControlFileBuffer);
-          detectedControlEncoding = autoDetectEncoding(uint8Array, 'control');
-          console.log('编码检测完成，检测到的编码：', detectedControlEncoding);
-          
-          // 确保controlFileEncoding已初始化
-          if (!controlFileEncoding) {
-            controlFileEncoding = document.getElementById('controlFileEncoding');
-            console.log('controlFileEncoding已初始化：', controlFileEncoding);
-          }
-          
-          // 自动设置编码并解析文件
-          if (controlFileEncoding) {
-            controlFileEncoding.value = 'auto';
-            console.log('编码已设置为auto');
-          }
-          console.log('准备解析DemControl文件...');
-          parseDemControlFileWithSelectedEncoding();
+    // 检查是否为Excel文件
+    const isExcelFile = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    console.log('是否为Excel文件：', isExcelFile);
+    
+    if (isExcelFile) {
+      console.log('检测到Excel文件，使用xlsx库解析');
+      updateStatus(`📁 开始处理Excel文件：${file.name}`, 'info');
+      
+      // 使用FileReader读取文件为ArrayBuffer
+      const reader = new FileReader();
+      reader.onloadstart = function() {
+        console.log('开始读取Excel文件...');
+      };
+      reader.onprogress = function(e) {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          console.log('Excel文件读取进度：', percentComplete.toFixed(2), '%');
         }
-      } catch (error) {
-        console.error('文件读取处理错误：', error);
-        updateStatus(`❌ 文件读取失败：${error.message}`, 'danger');
-      }
-    };
-    reader.onerror = function(error) {
-      console.error('文件读取器错误：', error);
-      updateStatus(`❌ 文件读取失败：${error.target.error.message}`, 'danger');
-    };
-    reader.readAsArrayBuffer(file);
-    console.log('文件读取已开始');
+      };
+      reader.onload = function(e) {
+        try {
+          console.log('Excel文件读取完成，开始解析...');
+          const arrayBuffer = e.target.result;
+          console.log('读取到的ArrayBuffer大小：', arrayBuffer.byteLength, '字节');
+          
+          // 使用xlsx库解析Excel文件
+          console.log('开始使用XLSX库解析Excel文件...');
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          console.log('Excel文件解析完成');
+          
+          // 获取所有工作表名称
+          const sheetNames = workbook.SheetNames;
+          console.log('Excel文件包含的工作表：', sheetNames);
+          console.log('工作表数量：', sheetNames.length);
+          
+          // 如果只有一个工作表，直接使用
+          if (sheetNames.length === 1) {
+            const firstSheetName = sheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            console.log('只有一个工作表，使用：', firstSheetName);
+            updateStatus(`📋 只找到一个工作表：${firstSheetName}，直接使用`, 'info');
+            processExcelSheet(worksheet, file, type);
+          } else {
+            // 如果有多个工作表，显示选择对话框
+            console.log('有多个工作表，显示选择下拉列表');
+            showSheetSelectionDialog(workbook, file, type);
+          }
+        } catch (error) {
+          console.error('Excel文件读取错误：', error);
+          console.error('错误堆栈：', error.stack);
+          updateStatus(`❌ Excel文件读取失败：${error.message}`, 'danger');
+        }
+      };
+      reader.onerror = function(error) {
+        console.error('Excel文件读取器错误：', error);
+        console.error('错误目标：', error.target);
+        if (error.target && error.target.error) {
+          console.error('读取器错误详情：', error.target.error);
+          updateStatus(`❌ Excel文件读取失败：${error.target.error.message}`, 'danger');
+        } else {
+          updateStatus(`❌ Excel文件读取失败：未知错误`, 'danger');
+        }
+      };
+      reader.onabort = function() {
+        console.error('Excel文件读取被中止');
+        updateStatus(`❌ Excel文件读取被中止`, 'danger');
+      };
+      reader.readAsArrayBuffer(file);
+      console.log('Excel文件读取已开始');
+    } else {
+      // 非Excel文件，使用原有逻辑处理
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          console.log('文件读取完成，开始处理...');
+          if (type === 'data') {
+            demDecFileBuffer = e.target.result;
+            console.log('DemDec文件缓冲已设置，大小：', demDecFileBuffer.byteLength);
+            
+            // 自动检测编码
+            const uint8Array = new Uint8Array(demDecFileBuffer);
+            detectedDataEncoding = autoDetectEncoding(uint8Array, 'data');
+            console.log('编码检测完成，检测到的编码：', detectedDataEncoding);
+            
+            // 确保dataFileEncoding已初始化
+            if (!dataFileEncoding) {
+              dataFileEncoding = document.getElementById('dataFileEncoding');
+              console.log('dataFileEncoding已初始化：', dataFileEncoding);
+            }
+            
+            // 自动设置编码并解析文件
+            if (dataFileEncoding) {
+              dataFileEncoding.value = 'auto';
+              console.log('编码已设置为auto');
+            }
+            console.log('准备解析DemDec文件...');
+            parseDemDecFileWithSelectedEncoding();
+          } else {
+            demControlFileBuffer = e.target.result;
+            console.log('DemControl文件缓冲已设置，大小：', demControlFileBuffer.byteLength);
+            
+            // 自动检测编码
+            const uint8Array = new Uint8Array(demControlFileBuffer);
+            detectedControlEncoding = autoDetectEncoding(uint8Array, 'control');
+            console.log('编码检测完成，检测到的编码：', detectedControlEncoding);
+            
+            // 确保controlFileEncoding已初始化
+            if (!controlFileEncoding) {
+              controlFileEncoding = document.getElementById('controlFileEncoding');
+              console.log('controlFileEncoding已初始化：', controlFileEncoding);
+            }
+            
+            // 自动设置编码并解析文件
+            if (controlFileEncoding) {
+              controlFileEncoding.value = 'auto';
+              console.log('编码已设置为auto');
+            }
+            console.log('准备解析DemControl文件...');
+            parseDemControlFileWithSelectedEncoding();
+          }
+        } catch (error) {
+          console.error('文件读取处理错误：', error);
+          updateStatus(`❌ 文件读取失败：${error.message}`, 'danger');
+        }
+      };
+      reader.onerror = function(error) {
+        console.error('文件读取器错误：', error);
+        updateStatus(`❌ 文件读取失败：${error.target.error.message}`, 'danger');
+      };
+      reader.readAsArrayBuffer(file);
+      console.log('文件读取已开始');
+    }
   } catch (error) {
     console.error('文件读取初始化错误：', error);
+    console.error('错误堆栈：', error.stack);
     updateStatus(`❌ 文件读取初始化失败：${error.message}`, 'danger');
+  }
+}
+
+// 处理Excel工作表
+function processExcelSheet(worksheet, file, type) {
+  try {
+    console.log('开始处理Excel工作表，文件大小：', file.size, '字节');
+    
+    // 直接将工作表转换为CSV格式，跳过中间的JSON转换步骤
+    console.log('开始将工作表直接转换为CSV格式...');
+    const csvContent = XLSX.utils.sheet_to_csv(worksheet);
+    console.log('Excel工作表解析完成，转换为CSV格式，CSV长度：', csvContent.length);
+    
+    // 将CSV内容转换为ArrayBuffer
+    console.log('开始将CSV内容转换为ArrayBuffer...');
+    const encoder = new TextEncoder();
+    const uint8Array = encoder.encode(csvContent);
+    const buffer = uint8Array.buffer;
+    console.log('CSV内容转换为ArrayBuffer完成，缓冲区大小：', buffer.byteLength);
+    
+    if (type === 'data') {
+      demDecFileBuffer = buffer;
+      demDecFileName = file.name;
+      console.log('DemDec Excel文件缓冲已设置，大小：', demDecFileBuffer.byteLength);
+      console.log('DemDec文件名已设置：', demDecFileName);
+      
+      // 自动设置编码为UTF-8（Excel文件解析后默认为UTF-8）
+      detectedDataEncoding = 'utf8';
+      console.log('Excel文件编码设置为：utf8');
+      
+      // 确保dataFileEncoding已初始化
+      if (!dataFileEncoding) {
+        dataFileEncoding = document.getElementById('dataFileEncoding');
+        console.log('dataFileEncoding已初始化：', dataFileEncoding);
+      }
+      
+      // 自动设置编码并解析文件
+      if (dataFileEncoding) {
+        dataFileEncoding.value = 'utf8';
+        console.log('编码已设置为utf8');
+      }
+      console.log('准备解析DemDec Excel文件...');
+      parseDemDecFileWithSelectedEncoding();
+    } else {
+      demControlFileBuffer = buffer;
+      demControlFileName = file.name;
+      console.log('DemControl Excel文件缓冲已设置，大小：', demControlFileBuffer.byteLength);
+      console.log('DemControl文件名已设置：', demControlFileName);
+      
+      // 自动设置编码为UTF-8（Excel文件解析后默认为UTF-8）
+      detectedControlEncoding = 'utf8';
+      console.log('Excel文件编码设置为：utf8');
+      
+      // 确保controlFileEncoding已初始化
+      if (!controlFileEncoding) {
+        controlFileEncoding = document.getElementById('controlFileEncoding');
+        console.log('controlFileEncoding已初始化：', controlFileEncoding);
+      }
+      
+      // 自动设置编码并解析文件
+      if (controlFileEncoding) {
+        controlFileEncoding.value = 'utf8';
+        console.log('编码已设置为utf8');
+      }
+      console.log('准备解析DemControl Excel文件...');
+      parseDemControlFileWithSelectedEncoding();
+    }
+  } catch (error) {
+    console.error('Excel工作表处理错误：', error);
+    updateStatus(`❌ Excel工作表处理失败：${error.message}`, 'danger');
+  }
+}
+
+// 存储Excel文件的workbook对象，用于工作表选择
+let excelWorkbookCache = null;
+let excelFileCache = null;
+let excelFileTypeCache = null;
+
+// 显示Sheet选择下拉列表
+function showSheetSelectionDialog(workbook, file, type) {
+  try {
+    console.log('开始显示Sheet选择下拉列表');
+    // 缓存workbook对象和文件信息
+    excelWorkbookCache = workbook;
+    excelFileCache = file;
+    excelFileTypeCache = type;
+    console.log('已缓存workbook对象和文件信息');
+    
+    // 获取所有工作表名称
+    const sheetNames = workbook.SheetNames;
+    console.log('准备显示Sheet选择下拉列表，工作表数量：', sheetNames.length);
+    console.log('工作表名称列表：', sheetNames);
+    
+    // 获取Sheet选择器元素
+    console.log('开始获取Sheet选择器元素...');
+    const sheetSelector = document.getElementById('sheetSelector');
+    console.log('sheetSelector元素：', sheetSelector);
+    if (sheetSelector) {
+      console.log('sheetSelector类名：', sheetSelector.className);
+      console.log('sheetSelector样式：', sheetSelector.style);
+    }
+    
+    const sheetSelect = document.getElementById('sheetSelect');
+    console.log('sheetSelect元素：', sheetSelect);
+    if (sheetSelect) {
+      console.log('sheetSelect类名：', sheetSelect.className);
+    }
+    
+    if (!sheetSelector || !sheetSelect) {
+      console.error('未找到Sheet选择器元素');
+      throw new Error('未找到Sheet选择器元素');
+    }
+    
+    // 清空现有选项
+    sheetSelect.innerHTML = '';
+    console.log('已清空现有选项');
+    
+    // 添加工作表选项
+    console.log('开始添加工作表选项...');
+    sheetNames.forEach((sheetName, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = sheetName;
+      sheetSelect.appendChild(option);
+      console.log('添加工作表选项：', sheetName, '索引：', index);
+    });
+    console.log('工作表选项添加完成');
+    
+    // 显示Sheet选择器
+    console.log('开始显示Sheet选择器...');
+    console.log('显示前sheetSelector类名：', sheetSelector.className);
+    sheetSelector.classList.remove('d-none');
+    console.log('显示后sheetSelector类名：', sheetSelector.className);
+    console.log('Sheet选择下拉列表已成功显示');
+    
+    // 强制重排，确保元素显示
+    sheetSelector.offsetHeight; // 触发重排
+    console.log('已触发重排，确保元素显示');
+    
+    // 更新状态提示
+    updateStatus(`📋 Excel文件 "${file.name}" 包含 ${sheetNames.length} 个工作表，请选择要读取的工作表`, 'info');
+    console.log('状态提示已更新');
+  } catch (error) {
+    console.error('显示Sheet选择下拉列表错误：', error);
+    console.error('错误堆栈：', error.stack);
+    updateStatus(`❌ 显示Sheet选择下拉列表失败：${error.message}`, 'danger');
+    
+    // 如果下拉列表显示失败，直接使用第一个工作表
+    console.log('下拉列表显示失败，直接使用第一个工作表');
+    const firstSheetName = workbook.SheetNames[0];
+    const firstWorksheet = workbook.Sheets[firstSheetName];
+    updateStatus(`⚠️  直接使用第一个工作表：${firstSheetName}`, 'warning');
+    processExcelSheet(firstWorksheet, file, type);
+  }
+}
+
+// 选择Excel工作表
+function selectExcelSheet() {
+  try {
+    // 获取选中的工作表索引
+    const selectElement = document.getElementById('sheetSelect');
+    const selectedIndex = parseInt(selectElement.value);
+    
+    // 从缓存中获取workbook对象和文件信息
+    const workbook = excelWorkbookCache;
+    const file = excelFileCache;
+    const type = excelFileTypeCache;
+    
+    console.log('从缓存中获取Excel文件信息：');
+    console.log('workbook:', workbook);
+    console.log('file:', file);
+    console.log('type:', type);
+    
+    if (!workbook || !file || type === null) {
+      console.error('缺少Excel文件信息，尝试重新从workbook对象中获取');
+      throw new Error('缺少Excel文件信息');
+    }
+    
+    // 获取所有工作表名称
+    const sheetNames = workbook.SheetNames;
+    console.log('获取所有工作表名称：', sheetNames);
+    
+    // 获取选中的工作表名称和内容
+    const selectedSheetName = sheetNames[selectedIndex];
+    const selectedWorksheet = workbook.Sheets[selectedSheetName];
+    
+    console.log('选中的工作表：', selectedSheetName);
+    updateStatus(`📁 开始处理Excel工作表：${selectedSheetName}`, 'info');
+    
+    // 隐藏Sheet选择器
+    const sheetSelector = document.getElementById('sheetSelector');
+    if (sheetSelector) {
+      sheetSelector.classList.add('d-none');
+      console.log('Sheet选择器已隐藏');
+    }
+    
+    // 处理选中的工作表
+    processExcelSheet(selectedWorksheet, file, type);
+    
+    // 注意：不再清除缓存，以便用户可以重新选择工作表
+    console.log('工作表处理完成，保留缓存以便重新选择工作表');
+  } catch (error) {
+    console.error('选择Excel工作表错误：', error);
+    console.error('错误堆栈：', error.stack);
+    updateStatus(`❌ 选择Excel工作表失败：${error.message}`, 'danger');
+    
+    // 发生错误时仍然清除缓存
+    console.log('发生错误，清除缓存');
+    excelWorkbookCache = null;
+    excelFileCache = null;
+    excelFileTypeCache = null;
   }
 }
 
@@ -941,6 +1254,32 @@ function parseDemDecFileWithSelectedEncoding() {
     updateStatus(`✅ 文件解析成功【${demDecFileName}】：使用${finalEncoding.toUpperCase()}编码，共 ${csvData.length} 行数据，${csvHeaders.length} 列 (${headerRows.length}行标题已合并)`, 'success');
     console.log('状态已更新，准备启用控件...');
     enableControls(['xAxisSelect', 'yAxisSelect', 'yAxis2Select', 'drawChartBtn', 'resetDataBtn']);
+    
+    // 时间筛选文件导入区域已设置为一直显示，无需动态控制
+    
+    // 添加"重新选择工作表"按钮
+    console.log('添加"重新选择工作表"按钮...');
+    const dataFileSection = document.querySelector('.file-upload-section:nth-child(1)');
+    if (dataFileSection) {
+      // 检查是否已经存在重新选择按钮
+      let reselectBtn = document.getElementById('reselectSheetBtn');
+      if (!reselectBtn) {
+        reselectBtn = document.createElement('button');
+        reselectBtn.id = 'reselectSheetBtn';
+        reselectBtn.className = 'btn btn-sm btn-outline-secondary mt-2';
+        reselectBtn.textContent = '🔄 重新选择工作表';
+        reselectBtn.addEventListener('click', function() {
+          // 重新显示Sheet选择器
+          const sheetSelector = document.getElementById('sheetSelector');
+          if (sheetSelector) {
+            sheetSelector.classList.remove('d-none');
+            console.log('重新显示Sheet选择器');
+          }
+        });
+        dataFileSection.appendChild(reselectBtn);
+        console.log('"重新选择工作表"按钮已添加');
+      }
+    }
     
     // 如果已选择DemControl文件且有选中时间，启用筛选按钮
     if (demControlFileSelected && selectedStartTime) {

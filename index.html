@@ -5,17 +5,29 @@
   <link rel="icon" type="image/svg+xml" href="./vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSV文件可视化分析工具 | DemDec & DemControl</title>
+  <!-- 版本信息 -->
+  <meta name="version" content="1.0.0">
   <!-- 引入外部资源 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- 引入本地样式 -->
   <link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
   <div class="container">
     <!-- 页面标题 -->
-    <h1 class="page-title">CSV文件可视化分析工具</h1>
+    <header class="mt-4 mb-4">
+      <div class="d-flex justify-content-between align-items-center">
+        <h1 class="page-title">CSV文件可视化分析工具</h1>
+        <div>
+          <a href="./usage.html" class="btn btn-outline-primary me-2">
+            📖 使用说明
+          </a>
+        </div>
+      </div>
+    </header>
 
     <!-- 第一部分：文件上传区域 -->
     <div class="row">
@@ -26,12 +38,12 @@
             📊 数据文件导入 
             <span class="file-type-label data">DemDec</span>
           </h4>
-          <div class="file-upload-area" id="dataFileUploadArea" style="position: relative; cursor: pointer;">
+          <div class="file-upload-area" id="dataFileUploadArea" style="position: relative; cursor: pointer; padding: 20px; min-height: 120px;">
 			<!-- DemDec文件输入框 -->
-				<input type="file" id="demDecFileInput" accept=".csv,.dat,.txt" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
+				<input type="file" id="demDecFileInput" accept=".csv,.dat,.txt,.xlsx,.xls" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
 				<div style="position: relative; z-index: 1; pointer-events: none;">
-					<h5>点击此处或拖拽文件到这里</h5>
-					<p class="text-muted mt-2">上传DemDec格式CSV、DAT或TXT数据文件（包含待分析的数值/文字数据）</p>
+					<h5 style="font-size: 1rem; margin-bottom: 8px;">点击此处或拖拽文件到这里</h5>
+					<p class="text-muted mt-1" style="font-size: 0.85rem;">上传DemDec格式CSV、DAT、TXT或Excel数据文件</p>
 				</div>
           </div>
           
@@ -39,6 +51,17 @@
           <div id="dataFileNameDisplay" class="uploaded-file-name d-none">
             <span id="dataFileName"></span>
             <span>✅ 已加载</span>
+          </div>
+          
+          <!-- Excel工作表选择下拉列表 -->
+          <div id="sheetSelector" class="d-none mt-3">
+            <label class="form-label fw-bold mb-2">📋 选择工作表：</label>
+            <select class="form-select mb-2" id="sheetSelect">
+              <!-- 动态加载工作表选项 -->
+            </select>
+            <button class="btn btn-sm btn-primary" id="confirmSheetBtn">
+              ✅ 确认选择并解析
+            </button>
           </div>
           
           <!-- 编码选择器 -->
@@ -66,7 +89,8 @@
           
           <div class="help-text">
             ✨ 说明：该文件为核心数据文件，列支持数值/文字类型，上传后可查看完整数据表格<br>
-            📝 编码：支持自动识别/手动选择GB2312/GBK/UTF-8，标题行合并前3行并去空格
+            📝 编码：支持自动识别/手动选择GB2312/GBK/UTF-8，标题行合并前3行并去空格<br>
+            📊 格式：支持CSV、DAT、TXT和Excel文件格式
           </div>
         </div>
       </div>
@@ -78,12 +102,12 @@
             ⏰ 时间筛选文件导入 
             <span class="file-type-label control">DemControl</span>
           </h4>
-          <div class="file-upload-area" id="controlFileUploadArea" style="position: relative; cursor: pointer;">
+          <div class="file-upload-area" id="controlFileUploadArea" style="position: relative; cursor: pointer; padding: 20px; min-height: 120px;">
             <!-- DemControl文件输入框 -->
-			<input type="file" id="demControlFileInput" accept=".csv,.dat,.txt" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
+			<input type="file" id="demControlFileInput" accept=".csv,.dat,.txt,.xlsx,.xls" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
 			<div style="position: relative; z-index: 1; pointer-events: none;">
-				<h5>点击此处或拖拽文件到这里</h5>
-				<p class="text-muted mt-2">上传DemControl格式CSV、DAT或TXT文件（第一列为时间筛选标记）</p>
+				<h5 style="font-size: 1rem; margin-bottom: 8px;">点击此处或拖拽文件到这里</h5>
+				<p class="text-muted mt-1" style="font-size: 0.85rem;">上传DemControl格式CSV、DAT、TXT或Excel文件</p>
 			</div>
           </div>
           
@@ -117,7 +141,8 @@
           </div>
           
           <div class="help-text">
-            ✨ 说明：该文件时间列的每一行均可作为筛选起点，选择后将筛选数据文件中【所选时间+15分钟】范围内的数据
+            ✨ 说明：该文件时间列的每一行均可作为筛选起点，选择后将筛选数据文件中【所选时间+15分钟】范围内的数据<br>
+            📊 格式：支持CSV、DAT、TXT和Excel文件格式
           </div>
           
           <!-- 时间选择下拉框 -->
@@ -318,6 +343,21 @@
         <tbody id="tableBody"></tbody>
       </table>
     </div>
+  </div>
+  
+
+  <!-- 版本和修改说明区域 -->
+  <div class="version-info mt-5 mb-3 text-center text-muted small">
+    <p>📦 版本：1.0.0 | 更新日期：2026-02-14</p>
+    <p class="mt-1">
+      🎉 本次更新内容：<br>
+      • 增加了Excel文件的多个Sheet支持，使用下拉列表选择<br>
+      • 实现了在同一个Excel文件中多次切换工作表的功能<br>
+      • 取消了隐藏DemControl文件导入框的设置，改为一直显示<br>
+      • 减小了文件导入框的占位大小，优化了界面布局<br>
+      • 修复了变量初始化顺序错误和Excel文件处理卡住的问题<br>
+      • 提高了文件处理的可靠性和稳定性
+    </p>
   </div>
 
   <!-- 引入外部JS -->
