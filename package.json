@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy:github": "vite build && gh-pages -d dist",
+    "deploy:all": "vite build && gh-pages -d dist",
     "electron:start": "electron .",
     "pack:installer": "electron-builder"
   },
