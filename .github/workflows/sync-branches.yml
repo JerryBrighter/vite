@@ -1,0 +1,22 @@
+name: Sync main to gh-pages
+on:
+  # 当main分支有push操作时，自动触发这个流程
+  push:
+    branches: [ main ]
+
+jobs:
+  sync-branches:
+    runs-on: ubuntu-latest
+    steps:
+      # 拉取代码到服务器
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 拉取所有分支历史，方便合并
+
+      # 切换到gh-pages分支，合并main，然后推送
+      - name: Sync main to gh-pages
+        run: |
+          git checkout gh-pages
+          git merge main --no-edit  # --no-edit 自动跳过提交信息编辑
+          git push origin gh-pages
+		  
