@@ -509,13 +509,9 @@ function processDatasetData(data, columnIndex) {
     if (cellValue) {
       if (!isNaN(Number(cellValue)) && cellValue !== '') {
         const numValue = Number(cellValue);
-        if (numValue !== 0) {
-          processedData.push(numValue);
-          rowTextValues.push(cellValue);
-        } else {
-          processedData.push(null);
-          rowTextValues.push(null);
-        }
+        // 保留0值，不设置为null
+        processedData.push(numValue);
+        rowTextValues.push(cellValue);
       } else {
         // 处理文本值
         let mappedValue;

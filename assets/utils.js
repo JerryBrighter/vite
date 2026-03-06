@@ -11,6 +11,7 @@
  * @returns {number} 时间戳（毫秒），解析失败返回NaN
  * @example
  * parseTime('2023-12-01 12:00:00'); // 返回时间戳
+ * parseTime('00:00:00.044'); // 返回时间戳
  */
 function parseTime(timeStr) {
   // 尝试直接解析
@@ -21,33 +22,50 @@ function parseTime(timeStr) {
   
   // 尝试不同的时间格式
   const patterns = [
-    /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/,
-    /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/,
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/,
-    /^(\d{4})\/(\d{2})\/(\d{2})T(\d{2}):(\d{2}):(\d{2})$/,
-    /^(\d{2}):(\d{2}):(\d{2})$/,
-    /^(\d{4})-(\d{2})-(\d{2})$/,
+    /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
+    /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
+    /^(\d{4})\/(\d{2})\/(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
+    /^(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
+    /^(\d{4})-(\d{2})-(\d{2})$/, 
     /^(\d{4})\/(\d{2})\/(\d{2})$/  ];
   
   for (const pattern of patterns) {
     const match = timeStr.match(pattern);
     if (match) {
-      if (match.length === 7) {
-        // 完整日期时间
+      if (match.length === 8) {
+        // 完整日期时间（带毫秒）
+        const [, year, month, day, hour, minute, second, ms] = match;
+        const milliseconds = ms ? parseFloat(ms) * 1000 : 0;
+        const date = new Date(year, month - 1, day, hour, minute, second, milliseconds);
+        if (!isNaN(date.getTime())) {
+          return date.getTime();
+        }
+      } else if (match.length === 7) {
+        // 完整日期时间（不带毫秒）
         const [, year, month, day, hour, minute, second] = match;
         const date = new Date(year, month - 1, day, hour, minute, second);
         if (!isNaN(date.getTime())) {
           return date.getTime();
         }
+      } else if (match.length === 5 && match[0].includes(':')) {
+        // 只有时间（带毫秒）
+        const [, hour, minute, second, ms] = match;
+        const milliseconds = ms ? parseFloat(ms) * 1000 : 0;
+        const date = new Date();
+        date.setHours(hour, minute, second, milliseconds);
+        if (!isNaN(date.getTime())) {
+          return date.getTime();
+        }
       } else if (match.length === 4) {
-        // 只有时间
+        // 只有时间（不带毫秒）
         const [, hour, minute, second] = match;
         const date = new Date();
         date.setHours(hour, minute, second, 0);
         if (!isNaN(date.getTime())) {
           return date.getTime();
         }
-      } else if (match.length === 5) {
+      } else if (match.length === 5 && !match[0].includes(':')) {
         // 只有日期
         const [, year, month, day] = match;
         const date = new Date(year, month - 1, day);
@@ -66,7 +84,7 @@ function parseTime(timeStr) {
  * @param {number} timestamp - 时间戳（毫秒）
  * @returns {string} 格式化后的日期时间字符串
  * @example
- * formatDateTime(1670000000000); // 返回 "2022-12-02T16:53:20"
+ * formatDateTime(1670000000000); // 返回 "2022-12-02T16:53"
  */
 function formatDateTime(timestamp) {
   const date = new Date(timestamp);
@@ -75,24 +93,83 @@ function formatDateTime(timestamp) {
   const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
   
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 /**
- * 解析CSV内容为二维数组
- * @param {Array<string>} lines - CSV行数组
- * @returns {Array<Array<string>>} 解析后的数据二维数组
+ * 解析CSV/TXT内容为二维数组
+ * @param {Array<string>} lines - 文件行数组
+ * @returns {Array<Array<string>>} 解析后的数据二维数组，第一行为标题行
  * @example
  * parseCSVContent(['a,b,c', '1,2,3']); // 返回 [["a", "b", "c"], ["1", "2", "3"]]
+ * parseCSVContent(['a\tb\tc', '1:2\t3:4']); // 返回 [["a", "b", "c"], ["2", "4"]]
+ * parseCSVContent(['时间\t温度:25\t湿度:60']); // 返回 [["时间", "温度", "湿度"], ["25", "60"]]
  */
 function parseCSVContent(lines) {
+  if (lines.length === 0) return [];
+  
   const data = [];
-  lines.forEach(line => {
-    const row = line.split(',').map(cell => cell.trim());
-    data.push(row);
-  });
+  let headerRow = [];
+  let hasHeader = false;
+  
+  // 检查第一行是否包含冒号分隔的键值对（除了时间列）
+  const firstLine = lines[0];
+  if (firstLine.includes('\t')) {
+    const cells = firstLine.split('\t');
+    // 检查除第一列外的其他列是否包含冒号
+    for (let i = 1; i < cells.length; i++) {
+      if (cells[i].includes(':')) {
+        hasHeader = true;
+        break;
+      }
+    }
+  }
+  
+  if (hasHeader) {
+    // 提取标题行
+    const firstLineCells = firstLine.split('\t');
+    headerRow = firstLineCells.map((cell, index) => {
+      if (index === 0) {
+        // 第一列设置为时间列标题
+        return '时间';
+      }
+      // 提取冒号前的部分作为标题
+      if (cell.includes(':')) {
+        const parts = cell.split(':');
+        return parts[0].trim();
+      }
+      return cell.trim();
+    });
+    data.push(headerRow);
+    
+    // 处理数据行（从第一行开始，因为第一行也包含数据）
+    lines.forEach(line => {
+      const row = line.split('\t').map((cell, index) => {
+        if (index === 0) {
+          return cell.trim();
+        }
+        if (cell.includes(':')) {
+          const parts = cell.split(':');
+          return parts.slice(1).join(':').trim();
+        }
+        return cell.trim();
+      });
+      data.push(row);
+    });
+  } else {
+    // 普通CSV格式或没有冒号分隔的格式
+    lines.forEach(line => {
+      let row;
+      if (line.includes('\t')) {
+        row = line.split('\t').map(cell => cell.trim());
+      } else {
+        row = line.split(',').map(cell => cell.trim());
+      }
+      data.push(row);
+    });
+  }
+  
   return data;
 }
 
@@ -157,37 +234,37 @@ function detectEncoding(buffer) {
     return 'utf8bom';
   }
   
+  // 首先尝试UTF-8解码
+  try {
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    const text = decoder.decode(buffer);
+    // 检查解码后的文本是否包含有效汉字
+    if (/[\u4e00-\u9fa5]/.test(text)) {
+      return 'utf8';
+    }
+  } catch (e) {
+    // UTF-8解码失败，继续尝试其他编码
+  }
+  
   // 检测GB2312特征
   const hasGBFeatures = hasGB2312Features(buffer);
   
   if (hasGBFeatures) {
     try {
-      // 尝试用GB2312解码
-      const text = decodeGB2312(buffer);
+      // 尝试使用浏览器自带的TextDecoder解码GB18030（包含GB2312和GBK）
+      const decoder = new TextDecoder('gb18030', { fatal: false });
+      const text = decoder.decode(buffer);
       if (text.length > 0) {
-        return 'gb2312';
+        return 'gb18030';
       }
     } catch (e) {
-      // 解码失败，尝试GBK
-      try {
-        // 这里简化处理，直接返回gbk
-        return 'gbk';
-      } catch (e) {
-        // 所有解码失败，返回utf8
-        return 'utf8';
-      }
+      // 解码失败，返回utf8
+      return 'utf8';
     }
   }
   
-  // 尝试UTF-8解码
-  try {
-    const decoder = new TextDecoder('utf-8', { fatal: true });
-    decoder.decode(buffer);
-    return 'utf8';
-  } catch (e) {
-    // UTF-8解码失败，返回utf8（容错处理）
-    return 'utf8';
-  }
+  // 所有尝试失败，默认返回utf8
+  return 'utf8';
 }
 
 /**

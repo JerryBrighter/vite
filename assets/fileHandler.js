@@ -46,6 +46,10 @@ function autoDetectAndProcessDataFile(file) {
       const lines = content.split('\n').filter(line => line.trim() !== '');
       const parsedData = parseCSVContent(lines);
       processDataFile(parsedData, detectedEncoding);
+      
+      // 自动检测成功后，不显示编码选择器，除非用户需要手动修改
+      // 但为了让用户知道检测结果，我们更新预览但不显示选择器
+      updateEncodingPreview();
     } catch (error) {
       // 解码失败时显示编码选择器，让用户手动选择
       elements.encodingSelector.classList.remove('d-none');
@@ -55,9 +59,8 @@ function autoDetectAndProcessDataFile(file) {
   };
   reader.readAsArrayBuffer(file);
   
-  // 始终显示编码选择器，供用户修改编码
-  elements.encodingSelector.classList.remove('d-none');
-  updateEncodingPreview();
+  // 暂时不显示编码选择器，等自动检测结果出来后再决定
+  // 这样可以避免预览显示与实际处理不一致的问题
 }
 
 /**
@@ -368,27 +371,45 @@ function confirmControlEncoding() {
 function processDataFile(data, encoding) {
   if (data.length === 0) return;
   
-  // 合并前3行作为标题
-  const newHeaders = [];
-  const headerRows = Math.min(3, data.length);
-  for (let i = 0; i < data[0].length; i++) {
-    const headerParts = [];
-    for (let j = 0; j < headerRows; j++) {
-      if (data[j][i]) {
-        const trimmedPart = data[j][i].trim().replace(/\s+/g, '');
-        if (trimmedPart) {
-          headerParts.push(trimmedPart);
-        }
+  let newHeaders;
+  let newOriginalData;
+  let headerRows = 0;
+  
+  // 检查是否已经有标题行（第一行是否包含"时间"列）
+  if (data[0] && data[0][0] === '时间') {
+    // 已经有标题行
+    newHeaders = data[0];
+    headerRows = 1;
+    // 提取数据行
+    newOriginalData = [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i].length > 0) {
+        newOriginalData.push(data[i]);
       }
     }
-    newHeaders.push(headerParts.join('') || `Column ${i + 1}`);
-  }
-  
-  // 提取数据行
-  const newOriginalData = [];
-  for (let i = headerRows; i < data.length; i++) {
-    if (data[i].length > 0) {
-      newOriginalData.push(data[i]);
+  } else {
+    // 合并前3行作为标题
+    newHeaders = [];
+    headerRows = Math.min(3, data.length);
+    for (let i = 0; i < data[0].length; i++) {
+      const headerParts = [];
+      for (let j = 0; j < headerRows; j++) {
+        if (data[j][i]) {
+          const trimmedPart = data[j][i].trim().replace(/\s+/g, '');
+          if (trimmedPart) {
+            headerParts.push(trimmedPart);
+          }
+        }
+      }
+      newHeaders.push(headerParts.join('') || `Column ${i + 1}`);
+    }
+    
+    // 提取数据行
+    newOriginalData = [];
+    for (let i = headerRows; i < data.length; i++) {
+      if (data[i].length > 0) {
+        newOriginalData.push(data[i]);
+      }
     }
   }
   
@@ -420,8 +441,8 @@ function processDataFile(data, encoding) {
   updateUIAfterDataLoad();
   updateStatus(`✅ 数据文件加载成功！编码：${encodingName}，总行数：${data.length}，数据行数：${newOriginalData.length}，标题行数：${headerRows}`);
   
-  // 显示编码选择器，以便用户可以在需要时手动选择编码
-  elements.encodingSelector.classList.remove('d-none');
+  // 自动检测成功后，不显示编码选择器
+  // 但为了让用户知道检测结果，我们更新预览但不显示选择器
   updateEncodingPreview();
 }
 
