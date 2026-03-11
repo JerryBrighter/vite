@@ -388,26 +388,74 @@ function processDataFile(data, encoding) {
       }
     }
   } else {
-    // 合并前3行作为标题
-    newHeaders = [];
-    headerRows = Math.min(3, data.length);
-    for (let i = 0; i < data[0].length; i++) {
-      const headerParts = [];
-      for (let j = 0; j < headerRows; j++) {
-        if (data[j][i]) {
-          const trimmedPart = data[j][i].trim().replace(/\s+/g, '');
-          if (trimmedPart) {
-            headerParts.push(trimmedPart);
+    // 检测前几行是否包含时间数据，避免将数据行错误识别为标题行
+    let actualHeaderRows = 0;
+    const maxHeaderRows = Math.min(3, data.length);
+    
+    // 检查前maxHeaderRows行，判断是否可能是标题行
+    for (let j = 0; j < maxHeaderRows; j++) {
+      if (data[j] && data[j].length > 0) {
+        // 检查第一列是否是时间格式
+        const firstCell = data[j][0].trim();
+        const parsedTime = parseTime(firstCell);
+        
+        // 如果第一列是时间格式，那么这行不是标题行
+        if (!isNaN(parsedTime)) {
+          break;
+        }
+        
+        // 检查其他列是否包含数字（如果大部分是数字，可能是数据行）
+        let numericCount = 0;
+        for (let k = 1; k < data[j].length; k++) {
+          const cell = data[j][k].trim();
+          if (!isNaN(Number(cell)) && cell !== '') {
+            numericCount++;
           }
         }
+        
+        // 如果超过50%的列是数字，可能是数据行
+        if (numericCount > data[j].length / 2) {
+          break;
+        }
+        
+        actualHeaderRows++;
       }
-      newHeaders.push(headerParts.join('') || `Column ${i + 1}`);
     }
+    
+    // 如果没有检测到标题行，创建默认标题行
+    newHeaders = [];
+    if (actualHeaderRows > 0) {
+      // 合并标题行
+      for (let i = 0; i < data[0].length; i++) {
+        const headerParts = [];
+        for (let j = 0; j < actualHeaderRows; j++) {
+          if (data[j] && data[j][i]) {
+            const trimmedPart = data[j][i].trim().replace(/\s+/g, '');
+            if (trimmedPart) {
+              headerParts.push(trimmedPart);
+            }
+          }
+        }
+        newHeaders.push(headerParts.join('') || `Column ${i + 1}`);
+      }
+    } else {
+      // 没有标题行，创建默认标题
+      for (let i = 0; i < data[0].length; i++) {
+        if (i === 0) {
+          newHeaders.push('时间');
+        } else {
+          newHeaders.push(`Column ${i + 1}`);
+        }
+      }
+    }
+    
+    // 设置实际的标题行数
+    headerRows = actualHeaderRows;
     
     // 提取数据行
     newOriginalData = [];
     for (let i = headerRows; i < data.length; i++) {
-      if (data[i].length > 0) {
+      if (data[i] && data[i].length > 0) {
         newOriginalData.push(data[i]);
       }
     }
@@ -592,8 +640,11 @@ function updateUIAfterDataLoad() {
   elements.drawChartBtn.disabled = false;
   elements.resetDataBtn.disabled = false;
   elements.exportChartBtn.disabled = false;
+  elements.exportDataBtn.disabled = false;
   elements.clearYAxisBtn.disabled = false;
   elements.clearYAxis2Btn.disabled = false;
+  elements.selectAllYAxisBtn.disabled = false;
+  elements.selectAllYAxis2Btn.disabled = false;
   elements.timeRangeSelector.classList.remove('d-none');
   
   // 自动设置时间范围

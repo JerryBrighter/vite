@@ -23,6 +23,7 @@ import {
   resetTimeRange, 
   autoTimeRange, 
   exportChart, 
+  exportData, 
   resetData, 
   clearAll, 
   toggleTable, 
@@ -147,6 +148,72 @@ function clearYAxis2Selection() {
 }
 
 /**
+ * 全选左侧Y轴
+ * @example
+ * // 当用户点击全选左侧Y轴按钮时调用
+ * elements.selectAllYAxisBtn.addEventListener('click', selectAllYAxis);
+ */
+function selectAllYAxis() {
+  // 获取右侧Y轴已选中的列索引
+  const rightSelectedIndices = Array.from(elements.yAxis2Select.options)
+    .filter(option => option.selected)
+    .map(option => parseInt(option.value))
+    .filter(index => !isNaN(index));
+  
+  // 只选择左侧Y轴中那些不在右侧Y轴选中列表中的列
+  const options = Array.from(elements.yAxisSelect.options);
+  const selectedIndices = options.map((option, index) => {
+    const value = parseInt(option.value);
+    if (!isNaN(value) && !rightSelectedIndices.includes(value)) {
+      option.selected = true;
+      return value;
+    } else {
+      option.selected = false;
+      return null;
+    }
+  }).filter(index => index !== null);
+  
+  // 更新全局变量
+  updateVariables({
+    yAxisIndices: selectedIndices
+  });
+  updateStatus('✅ 已全选左侧Y轴所有未在右侧Y轴选中的数据列');
+}
+
+/**
+ * 全选右侧Y轴
+ * @example
+ * // 当用户点击全选右侧Y轴按钮时调用
+ * elements.selectAllYAxis2Btn.addEventListener('click', selectAllYAxis2);
+ */
+function selectAllYAxis2() {
+  // 获取左侧Y轴已选中的列索引
+  const leftSelectedIndices = Array.from(elements.yAxisSelect.options)
+    .filter(option => option.selected)
+    .map(option => parseInt(option.value))
+    .filter(index => !isNaN(index));
+  
+  // 只选择右侧Y轴中那些不在左侧Y轴选中列表中的列
+  const options = Array.from(elements.yAxis2Select.options);
+  const selectedIndices = options.map((option, index) => {
+    const value = parseInt(option.value);
+    if (!isNaN(value) && !leftSelectedIndices.includes(value)) {
+      option.selected = true;
+      return value;
+    } else {
+      option.selected = false;
+      return null;
+    }
+  }).filter(index => index !== null);
+  
+  // 更新全局变量
+  updateVariables({
+    yAxis2Indices: selectedIndices
+  });
+  updateStatus('✅ 已全选右侧Y轴所有未在左侧Y轴选中的数据列');
+}
+
+/**
  * 处理自动设置时间范围
  * @example
  * // 当用户点击自动设置时间范围按钮时调用
@@ -191,6 +258,8 @@ function initEventListeners() {
   elements.drawChartBtn.addEventListener('click', drawChart);
   elements.clearYAxisBtn.addEventListener('click', clearYAxisSelection);
   elements.clearYAxis2Btn.addEventListener('click', clearYAxis2Selection);
+  elements.selectAllYAxisBtn.addEventListener('click', selectAllYAxis);
+  elements.selectAllYAxis2Btn.addEventListener('click', selectAllYAxis2);
   
   // 时间范围选择
   elements.applyTimeRangeBtn.addEventListener('click', applyTimeRange);
@@ -199,6 +268,7 @@ function initEventListeners() {
   
   // 操作按钮
   elements.exportChartBtn.addEventListener('click', exportChart);
+  elements.exportDataBtn.addEventListener('click', exportData);
   elements.resetDataBtn.addEventListener('click', resetData);
   elements.clearAllBtn.addEventListener('click', clearAll);
   

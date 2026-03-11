@@ -115,6 +115,8 @@ const elements = {
   yAxis2Select: document.getElementById('yAxis2Select'),               // 右侧Y轴选择器
   clearYAxisBtn: document.getElementById('clearYAxisBtn'),             // 清除左侧Y轴按钮
   clearYAxis2Btn: document.getElementById('clearYAxis2Btn'),           // 清除右侧Y轴按钮
+  selectAllYAxisBtn: document.getElementById('selectAllYAxisBtn'),     // 全选左侧Y轴按钮
+  selectAllYAxis2Btn: document.getElementById('selectAllYAxis2Btn'),   // 全选右侧Y轴按钮
   drawChartBtn: document.getElementById('drawChartBtn'),               // 绘制图表按钮
   
   // 时间范围选择元素
@@ -127,6 +129,7 @@ const elements = {
   
   // 操作按钮
   exportChartBtn: document.getElementById('exportChartBtn'),           // 导出图表按钮
+  exportDataBtn: document.getElementById('exportDataBtn'),             // 导出数据按钮
   resetDataBtn: document.getElementById('resetDataBtn'),               // 重置数据按钮
   clearAllBtn: document.getElementById('clearAllBtn'),                 // 清空所有按钮
   

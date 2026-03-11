@@ -370,6 +370,66 @@ function exportChart() {
 }
 
 /**
+ * 导出数据为CSV
+ * @example
+ * // 当用户点击导出数据按钮时调用
+ * elements.exportDataBtn.addEventListener('click', exportData);
+ */
+function exportData() {
+  if (filteredData.length === 0) {
+    updateStatus('⚠️ 暂无数据可导出');
+    return;
+  }
+  
+  try {
+    // 准备CSV内容
+    let csvContent = '';
+    
+    // 添加标题行（取消双引号）
+    if (headers && headers.length > 0) {
+      csvContent += headers.map(header => header).join(',') + '\n';
+    }
+    
+    // 添加数据行
+    filteredData.forEach(row => {
+      const rowData = row.map(cell => {
+        if (cell === null || cell === undefined) {
+          return '';
+        }
+        // 处理包含逗号、引号或换行符的单元格
+        const cellStr = String(cell);
+        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+          return `"${cellStr.replace(/"/g, '""')}"`;
+        }
+        return cellStr;
+      });
+      csvContent += rowData.join(',') + '\n';
+    });
+    
+    // 创建Blob对象
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // 创建下载链接
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.setAttribute('download', `DemDec数据_${timestamp}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    
+    updateStatus('✅ 数据已成功导出为CSV文件');
+  } catch (error) {
+    updateStatus(`❌ 数据导出失败：${error.message}`);
+    console.error('导出错误详情：', error);
+  }
+}
+
+/**
  * 重置数据
  * @example
  * // 当用户点击重置数据按钮时调用
@@ -427,8 +487,11 @@ function clearAll() {
   elements.yAxis2Select.disabled = true;
   elements.clearYAxisBtn.disabled = true;
   elements.clearYAxis2Btn.disabled = true;
+  elements.selectAllYAxisBtn.disabled = true;
+  elements.selectAllYAxis2Btn.disabled = true;
   elements.drawChartBtn.disabled = true;
   elements.exportChartBtn.disabled = true;
+  elements.exportDataBtn.disabled = true;
   elements.resetDataBtn.disabled = true;
   elements.chartContainer.innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 text-muted">📊 未绘制图表，上传数据文件并配置坐标轴后点击「绘制折线图」</div>';
   elements.lineChart.style.display = 'none';
@@ -1039,6 +1102,7 @@ export {
   resetTimeRange,
   autoTimeRange,
   exportChart,
+  exportData,
   resetData,
   clearAll,
   toggleTable,

@@ -238,12 +238,12 @@ function detectEncoding(buffer) {
   try {
     const decoder = new TextDecoder('utf-8', { fatal: true });
     const text = decoder.decode(buffer);
-    // 检查解码后的文本是否包含有效汉字
-    if (/[\u4e00-\u9fa5]/.test(text)) {
+    // 检查解码后的文本是否包含有效字符
+    if (text.length > 0) {
       return 'utf8';
     }
   } catch (e) {
-    // UTF-8解码失败，继续尝试其他编码
+    // UTF-8解码失败，继续尝试GB18030
   }
   
   // 检测GB2312特征
@@ -259,11 +259,10 @@ function detectEncoding(buffer) {
       }
     } catch (e) {
       // 解码失败，返回utf8
-      return 'utf8';
     }
   }
   
-  // 所有尝试失败，默认返回utf8
+  // 默认返回utf8
   return 'utf8';
 }
 

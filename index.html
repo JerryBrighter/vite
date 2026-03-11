@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSV文件可视化分析工具 | DemDec & DemControl</title>
   <!-- 版本信息 -->
-  <meta name="version" content="1.3.0">
+  <meta name="version" content="1.4.0">
   <!-- 引入外部资源 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -198,7 +198,10 @@
           </select>
           <div class="d-flex justify-content-between align-items-center mt-1">
             <div class="help-text">按住Ctrl键可多选，使用左侧Y轴刻度</div>
-            <button class="btn btn-sm btn-outline-danger" id="clearYAxisBtn" disabled>清除</button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-success" id="selectAllYAxisBtn" disabled>全选</button>
+              <button class="btn btn-sm btn-outline-danger" id="clearYAxisBtn" disabled>清除</button>
+            </div>
           </div>
         </div>
         <div class="col-md-4 mb-3">
@@ -208,7 +211,10 @@
           </select>
           <div class="d-flex justify-content-between align-items-center mt-1">
             <div class="help-text">按住Ctrl键可多选，使用右侧Y轴刻度</div>
-            <button class="btn btn-sm btn-outline-danger" id="clearYAxis2Btn" disabled>清除</button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-success" id="selectAllYAxis2Btn" disabled>全选</button>
+              <button class="btn btn-sm btn-outline-danger" id="clearYAxis2Btn" disabled>清除</button>
+            </div>
           </div>
         </div>
       </div>
@@ -267,6 +273,9 @@
     <div class="btn-area">
       <button class="btn btn-success me-2" id="exportChartBtn" disabled>
         📥 导出图表为图片
+      </button>
+      <button class="btn btn-info me-2" id="exportDataBtn" disabled>
+        📤 导出数据为CSV
       </button>
       <button class="btn btn-outline-secondary me-2" id="resetDataBtn" disabled>
         🔄 重置为原始数据
@@ -379,19 +388,15 @@
 
   <!-- 版本和修改说明区域 -->
   <div class="version-info mt-5 mb-3 text-center text-muted small">
-    <p>📦 版本：1.3.0 | 更新日期：2026-03-06</p>
+    <p>📦 版本：1.4.0 | 更新日期：2026-03-11</p>
     <p class="mt-1">
       🎉 本次更新内容：<br>
-      • 支持TAB分隔的TXT文件处理<br>
-      • 支持冒号分隔的键值对格式（如"板卡槽位号:解调1"）<br>
-      • 自动提取列名作为标题行<br>
-      • 支持带有毫秒的时间格式（如"00:00:00.044"）<br>
-      • 修复了编码检测错误的问题，确保UTF-8编码被正确识别<br>
-      • 修复了自动编码检测后不自动应用的问题，避免乱码<br>
-      • 修复了数据全0时无法画图的问题<br>
-      • 修复了初始化时绘图区横坐标未设置的问题<br>
-      • 将"X轴范围调整"标签改为"X轴范围设置"<br>
-      • 优化时间输入控件，只显示到分钟，不需要秒
+      • 添加了数据导出功能，可将筛选后的数据导出为CSV文件<br>
+      • 为左侧Y轴和右侧Y轴添加了"全选"按钮，支持快速选择所有数据列<br>
+      • 优化了全选功能，确保左右Y轴的列互斥，避免重复选择<br>
+      • 改进了标题行识别逻辑，避免将包含时间数据的行错误识别为标题行<br>
+      • 优化了没有标题行的数据文件处理，自动创建默认标题行<br>
+      • 取消了导出CSV文件时标题行的双引号，使文件更加简洁易读
     </p>
   </div>
 
