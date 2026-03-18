@@ -105,6 +105,7 @@ function formatDateTime(timestamp) {
  * parseCSVContent(['a,b,c', '1,2,3']); // 返回 [["a", "b", "c"], ["1", "2", "3"]]
  * parseCSVContent(['a\tb\tc', '1:2\t3:4']); // 返回 [["a", "b", "c"], ["2", "4"]]
  * parseCSVContent(['时间\t温度:25\t湿度:60']); // 返回 [["时间", "温度", "湿度"], ["25", "60"]]
+ * parseCSVContent(['2026-03-14 03:59:33 99.451 23.570']); // 返回 [["时间", "列1", "列2"], ["2026-03-14 03:59:33", "99.451", "23.570"]]
  */
 function parseCSVContent(lines) {
   if (lines.length === 0) return [];
@@ -158,19 +159,83 @@ function parseCSVContent(lines) {
       data.push(row);
     });
   } else {
-    // 普通CSV格式或没有冒号分隔的格式
-    lines.forEach(line => {
-      let row;
-      if (line.includes('\t')) {
-        row = line.split('\t').map(cell => cell.trim());
-      } else {
-        row = line.split(',').map(cell => cell.trim());
-      }
-      data.push(row);
-    });
+    // 检查是否为空格分隔的格式（日期 时间 数据1 数据2 ...）
+    // 判断条件：第一列包含日期格式（年月日），后面是空格分隔的数值
+    const isSpaceSeparated = detectSpaceSeparatedFormat(firstLine);
+    
+    if (isSpaceSeparated) {
+       // 空格分隔的格式：解析所有行
+       const firstParts = firstLine.trim().split(/\s+/);
+       const numCols = firstParts.length;
+       headerRow = ['时间'];
+       for (let i = 1; i < numCols; i++) {
+         headerRow.push(`列${i}`);
+       }
+       data.push(headerRow);
+       
+       // 处理数据行
+       lines.forEach(line => {
+         const parts = line.trim().split(/\s+/);
+         if (parts.length >= 2) {
+           // 第一部分是日期，第二部分是时间，合并为完整的日期时间
+           const dateTime = `${parts[0]} ${parts[1]}`;
+           const row = [dateTime];
+           // 添加后续的数据列
+           for (let i = 2; i < parts.length; i++) {
+             row.push(parts[i]);
+           }
+           data.push(row);
+         }
+       });
+     } else {
+      // 普通CSV格式或TAB分隔的格式
+      lines.forEach(line => {
+        let row;
+        if (line.includes('\t')) {
+          row = line.split('\t').map(cell => cell.trim());
+        } else if (line.includes(',')) {
+          row = line.split(',').map(cell => cell.trim());
+        } else {
+          row = [line.trim()];
+        }
+        data.push(row);
+      });
+    }
   }
   
   return data;
+}
+
+/**
+ * 检测是否为空格分隔的格式
+ * 格式：日期 时间 数据1 数据2 ...
+ * 例如：2026-03-14 03:59:33 99.451 23.570
+ * @param {string} line - 待检测的行
+ * @returns {boolean} 是否为空格分隔格式
+ */
+function detectSpaceSeparatedFormat(line) {
+  const trimmed = line.trim();
+  // 使用空格分割
+  const parts = trimmed.split(/\s+/);
+  
+  // 至少需要3列（日期、时间、至少一个数据）
+  if (parts.length < 3) return false;
+  
+  // 检查第一部分是否是日期格式（年-月-日）
+  const datePattern = /^\d{4}-\d{1,2}-\d{1,2}$/;
+  if (!datePattern.test(parts[0])) return false;
+  
+  // 检查第二部分是否是时间格式（时:分:秒）
+  const timePattern = /^\d{1,2}:\d{1,2}:\d{1,2}(\.\d+)?$/;
+  if (!timePattern.test(parts[1])) return false;
+  
+  // 检查后续部分是否都是数值
+  for (let i = 2; i < parts.length; i++) {
+    const num = parseFloat(parts[i]);
+    if (isNaN(num)) return false;
+  }
+  
+  return true;
 }
 
 /**
