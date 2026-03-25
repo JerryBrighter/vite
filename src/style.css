@@ -267,13 +267,13 @@ table tr:hover {
   }
 }
 
-/* 零列过滤选项 */
-.zero-column-option {
-  margin-top: 15px;
-  padding: 10px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-  border: 1px solid #e9ecef;
+/* 高级选项 */
+.advanced-options .zero-column-option,
+.advanced-options .manual-encoding-option {
+  padding: 0;
+  background-color: transparent;
+  border-radius: 0;
+  border: none;
 }
 
 /* 时间选择下拉框 */

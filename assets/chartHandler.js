@@ -5,7 +5,7 @@
  * 表格显示切换等功能。
  */
 
-import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, updateVariables } from './config.js';
+import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, updateVariables, getToggleLineEnabled, getEqualAxisEnabled } from './config.js';
 import { parseTime, formatDateTime, updateStatus } from './utils.js';
 import { updateUIAfterDataLoad, updateTable } from './fileHandler.js';
 
@@ -32,8 +32,108 @@ function drawChart() {
     currentChart.destroy();
   }
   
+  // 检查X轴是否为数值类型（不是时间/日期）
+  // 如果是数值类型，需要对数据进行排序
+  let sortedData = [...filteredData];
+  const xColumnValues = filteredData.map(row => row[xIndex]);
+  
+  // 检测是否为时间格式
+  const isTimeFormat = (val) => {
+    const timePattern = /^\d{1,2}:\d{1,2}:\d{1,2}(\.\d+)?$/;
+    const dateTimePattern = /^\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{1,2}:\d{1,2}(\.\d+)?$/;
+    return timePattern.test(val) || dateTimePattern.test(val);
+  };
+  
+  // 检测是否为日期时间格式
+  const isDateTimeFormat = (val) => {
+    const dateTimePatterns = [
+      /^\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{1,2}:\d{1,2}/,
+      /^\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{1,2}:\d{1,2}/,
+      /^\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{1,2}:\d{1,2}/
+    ];
+    return dateTimePatterns.some(pattern => pattern.test(val));
+  };
+  
+  // 只有当所有值都是纯数字且不是时间格式时，才认为是数值类型
+  const isNumericXAxis = xColumnValues.length > 0 && xColumnValues.every(val => {
+    if (!val || val.trim() === '') return false;
+    // 排除时间格式
+    if (isTimeFormat(val)) return false;
+    // 排除日期时间格式
+    if (isDateTimeFormat(val)) return false;
+    const num = parseFloat(val);
+    return !isNaN(num) && isFinite(num);
+  });
+  
+  // 如果X轴是数值类型，按X轴数值从小到大排序
+  if (isNumericXAxis && xColumnValues.length > 1) {
+    sortedData.sort((a, b) => {
+      const numA = parseFloat(a[xIndex]);
+      const numB = parseFloat(b[xIndex]);
+      return numA - numB;
+    });
+  }
+  
+  // 计算X轴和Y轴的数值范围，用于整齐坐标轴
+  let xMin, xMax, yMin, yMax;
+  if (isNumericXAxis) {
+    const xValues = sortedData.map(row => parseFloat(row[xIndex]));
+    xMin = Math.min(...xValues);
+    xMax = Math.max(...xValues);
+    
+    // 计算Y轴范围（收集所有Y轴数据）
+    let allYValues = [];
+    yIndices.forEach(index => {
+      const result = processDatasetData(sortedData, index);
+      allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+    });
+    y2Indices.forEach(index => {
+      const result = processDatasetData(sortedData, index);
+      allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+    });
+    
+    if (allYValues.length > 0) {
+      yMin = Math.min(...allYValues);
+      yMax = Math.max(...allYValues);
+    }
+    
+    // 整齐坐标轴：让X轴和Y轴每个像素点显示相同的标尺数值
+    if (getEqualAxisEnabled() && xMin !== undefined && xMax !== undefined && yMin !== undefined && yMax !== undefined) {
+      // 获取图表容器尺寸
+      const chartContainer = document.getElementById('chartContainer');
+      if (chartContainer) {
+        const containerWidth = chartContainer.clientWidth;
+        const containerHeight = chartContainer.clientHeight;
+        
+        if (containerWidth > 0 && containerHeight > 0) {
+          // 计算X轴和Y轴的数值范围
+          const xRange = xMax - xMin;
+          const yRange = yMax - yMin;
+          
+          // 计算理想的数值范围，使X轴和Y轴的比例相同
+          const aspectRatio = containerWidth / containerHeight;
+          
+          // 调整X轴或Y轴的范围，使它们的比例与容器比例匹配
+          if (xRange / yRange > aspectRatio) {
+            // X轴范围相对较大，调整Y轴范围
+            const targetYRange = xRange / aspectRatio;
+            const yCenter = (yMin + yMax) / 2;
+            yMin = yCenter - targetYRange / 2;
+            yMax = yCenter + targetYRange / 2;
+          } else {
+            // Y轴范围相对较大，调整X轴范围
+            const targetXRange = yRange * aspectRatio;
+            const xCenter = (xMin + xMax) / 2;
+            xMin = xCenter - targetXRange / 2;
+            xMax = xCenter + targetXRange / 2;
+          }
+        }
+      }
+    }
+  }
+  
   // 准备数据
-  const labels = filteredData.map(row => row[xIndex]);
+  const labels = sortedData.map(row => row[xIndex]);
   const datasets = [];
   
   // 颜色配置
@@ -51,7 +151,7 @@ function drawChart() {
   // 左侧Y轴数据
   let colorIndex = 0;
   yIndices.forEach((index, i) => {
-    const { data, textMapping, reverseTextMapping, rowTextValues } = processDatasetData(filteredData, index);
+    const { data, textMapping, reverseTextMapping, rowTextValues } = processDatasetData(sortedData, index);
     const color = colors[colorIndex % colors.length];
     datasets.push({
       label: headers[index]?.trim() || `Y轴${i + 1}`,
@@ -64,6 +164,7 @@ function drawChart() {
       borderWidth: 2,
       tension: 0.2,
       fill: false,
+      showLine: !getToggleLineEnabled(),
       pointRadius: 2,
       pointHoverRadius: 4,
       pointBackgroundColor: color.border,
@@ -75,7 +176,7 @@ function drawChart() {
   
   // 右侧Y轴数据
   y2Indices.forEach((index, i) => {
-    const { data, textMapping, reverseTextMapping, rowTextValues } = processDatasetData(filteredData, index);
+    const { data, textMapping, reverseTextMapping, rowTextValues } = processDatasetData(sortedData, index);
     const color = colors[colorIndex % colors.length];
     datasets.push({
       label: headers[index]?.trim() || `Y轴${yIndices.length + i + 1}`,
@@ -87,6 +188,7 @@ function drawChart() {
       backgroundColor: color.background,
       borderWidth: 2,
       tension: 0.2,
+      showLine: !getToggleLineEnabled(),
       fill: false,
       pointRadius: 2,
       pointHoverRadius: 4,
@@ -115,6 +217,7 @@ function drawChart() {
       },
       scales: {
         x: {
+          type: isNumericXAxis ? 'linear' : 'category',
           title: {
             display: true,
             text: headers[xIndex]?.trim() || 'X轴',
@@ -144,7 +247,8 @@ function drawChart() {
             color: 'rgba(0, 0, 0, 0.1)',
             drawTicks: true,
             tickLength: 5
-          }
+          },
+          ...(isNumericXAxis && getEqualAxisEnabled() ? { min: xMin, max: xMax } : {})
         },
         y: {
           type: 'linear',
@@ -167,7 +271,8 @@ function drawChart() {
             font: {
               family: "'Microsoft YaHei', sans-serif"
             }
-          }
+          },
+          ...(getEqualAxisEnabled() && yMin !== undefined && yMax !== undefined ? { min: yMin, max: yMax } : {})
         },
         y1: {
           type: 'linear',
@@ -190,7 +295,8 @@ function drawChart() {
             font: {
               family: "'Microsoft YaHei', sans-serif"
             }
-          }
+          },
+          ...(getEqualAxisEnabled() && yMin !== undefined && yMax !== undefined ? { min: yMin, max: yMax } : {})
         }
       },
       plugins: {
@@ -266,11 +372,17 @@ function applyTimeRange() {
     return;
   }
   
+  const xIndex = parseInt(elements.xAxisSelect.value);
+  if (isNaN(xIndex)) {
+    updateStatus('⚠️ 请先选择X轴');
+    return;
+  }
+  
   const startTimestamp = new Date(startTime).getTime();
   const endTimestamp = new Date(endTime).getTime();
   
   const newFilteredData = originalData.filter(row => {
-    const rowTime = parseTime(row[0]);
+    const rowTime = parseTime(row[xIndex]);
     return !isNaN(rowTime) && rowTime >= startTimestamp && rowTime <= endTimestamp;
   });
   
@@ -320,12 +432,15 @@ function resetTimeRange() {
  */
 function autoTimeRange() {
   if (originalData.length > 0) {
-    const firstTime = parseTime(originalData[0][0]);
-    const lastTime = parseTime(originalData[originalData.length - 1][0]);
-    
-    if (!isNaN(firstTime) && !isNaN(lastTime)) {
-      elements.timeRangeStart.value = formatDateTime(firstTime);
-      elements.timeRangeEnd.value = formatDateTime(lastTime);
+    const xIndex = parseInt(elements.xAxisSelect.value);
+    if (!isNaN(xIndex)) {
+      const firstTime = parseTime(originalData[0][xIndex]);
+      const lastTime = parseTime(originalData[originalData.length - 1][xIndex]);
+      
+      if (!isNaN(firstTime) && !isNaN(lastTime)) {
+        elements.timeRangeStart.value = formatDateTime(firstTime);
+        elements.timeRangeEnd.value = formatDateTime(lastTime);
+      }
     }
   }
 }
@@ -816,15 +931,40 @@ function addChartLegend(datasets) {
 function initXAxisSlider() {
   if (!elements.sliderHandleMin || !elements.sliderHandleMax) return;
   
-  // 滑块初始化时始终位于拖动条的两端
-  // 拖动条的范围由时间输入框控制
-  const startIndex = 0;
-  const endIndex = originalData.length - 1;
+  let startIndex = 0;
+  let endIndex = originalData.length - 1;
   
-  // 初始化滑块位置为拖动条的两端
+  // 尝试从时间范围输入框获取当前设置的范围
+  const startTime = elements.timeRangeStart.value;
+  const endTime = elements.timeRangeEnd.value;
+  const xIndex = parseInt(elements.xAxisSelect.value);
+  
+  if (startTime && endTime && !isNaN(xIndex)) {
+    const startTimestamp = new Date(startTime).getTime();
+    const endTimestamp = new Date(endTime).getTime();
+    
+    // 找到对应的索引
+    for (let i = 0; i < originalData.length; i++) {
+      const rowTime = parseTime(originalData[i][xIndex]);
+      if (!isNaN(rowTime) && rowTime >= startTimestamp) {
+        startIndex = i;
+        break;
+      }
+    }
+    
+    for (let i = originalData.length - 1; i >= 0; i--) {
+      const rowTime = parseTime(originalData[i][xIndex]);
+      if (!isNaN(rowTime) && rowTime <= endTimestamp) {
+        endIndex = i;
+        break;
+      }
+    }
+  }
+  
+  // 初始化滑块位置
   updateXAxisSliderPosition(startIndex, endIndex);
   
-  // 更新滑块标签，确保显示正确的时间值
+  // 更新滑块标签
   updateXAxisSliderLabels(startIndex, endIndex);
   
   // 添加滑块拖动事件

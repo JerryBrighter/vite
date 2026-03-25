@@ -55,7 +55,6 @@ let yAxis2Indices = [];
  */
 let currentChart = null;
 
-// 分页变量
 /**
  * 当前页码 - 数据表格的当前页码
  * @type {number}
@@ -68,12 +67,28 @@ let currentPage = 1;
  */
 let itemsPerPage = 10;
 
-// 控制文件变量
 /**
+ * 控制文件变量
  * 选中的控制时间 - 从控制文件选择的时间值
  * @type {string|null}
  */
 let selectedControlTime = null;
+
+/**
+ * 整齐坐标轴模式 - 是否使左右Y轴使用相同的刻度范围
+ * @type {boolean}
+ */
+let equalAxisEnabled = false;
+let toggleLineEnabled = false; // 去掉连线模式
+
+// 使用getter函数来获取状态值
+export function getToggleLineEnabled() {
+  return toggleLineEnabled;
+}
+
+export function getEqualAxisEnabled() {
+  return equalAxisEnabled;
+}
 
 // DOM元素引用
 /**
@@ -126,10 +141,12 @@ const elements = {
   applyTimeRangeBtn: document.getElementById('applyTimeRangeBtn'),     // 应用时间范围按钮
   resetTimeRangeBtn: document.getElementById('resetTimeRangeBtn'),     // 重置时间范围按钮
   autoTimeRangeBtn: document.getElementById('autoTimeRangeBtn'),       // 自动设置时间范围按钮
+  equalAxisBtn: document.getElementById('equalAxisBtn'),               // 整齐坐标轴按钮
   
   // 操作按钮
   exportChartBtn: document.getElementById('exportChartBtn'),           // 导出图表按钮
   exportDataBtn: document.getElementById('exportDataBtn'),             // 导出数据按钮
+  toggleLineBtn: document.getElementById('toggleLineBtn'),               // 去掉连线按钮
   resetDataBtn: document.getElementById('resetDataBtn'),               // 重置数据按钮
   clearAllBtn: document.getElementById('clearAllBtn'),                 // 清空所有按钮
   
@@ -157,6 +174,7 @@ const elements = {
   
   // 其他元素
   filterZeroColumns: document.getElementById('filterZeroColumns'),     // 过滤全0列复选框
+  manualEncoding: document.getElementById('manualEncoding'),           // 手动选择编码复选框
   
   // X轴滑块元素
   xAxisSliderContainer: document.getElementById('xAxisSliderContainer'), // X轴滑块容器
@@ -180,6 +198,8 @@ export {
   currentPage, 
   itemsPerPage, 
   selectedControlTime,
+  equalAxisEnabled,
+  toggleLineEnabled,
   elements
 };
 
@@ -201,4 +221,6 @@ export function updateVariables(newValues) {
   if (newValues.currentPage !== undefined) currentPage = newValues.currentPage;
   if (newValues.itemsPerPage !== undefined) itemsPerPage = newValues.itemsPerPage;
   if (newValues.selectedControlTime !== undefined) selectedControlTime = newValues.selectedControlTime;
+  if (newValues.equalAxisEnabled !== undefined) equalAxisEnabled = newValues.equalAxisEnabled;
+  if (newValues.toggleLineEnabled !== undefined) toggleLineEnabled = newValues.toggleLineEnabled;
 }

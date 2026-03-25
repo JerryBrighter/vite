@@ -107,15 +107,116 @@ function formatDateTime(timestamp) {
  * parseCSVContent(['时间\t温度:25\t湿度:60']); // 返回 [["时间", "温度", "湿度"], ["25", "60"]]
  * parseCSVContent(['2026-03-14 03:59:33 99.451 23.570']); // 返回 [["时间", "列1", "列2"], ["2026-03-14 03:59:33", "99.451", "23.570"]]
  */
+
+/**
+ * 预处理行，处理标题行多余TAB键的情况
+ * 如果标题行以TAB开头，且数据行比标题行少一列，则去掉标题行的第一个TAB
+ * @param {Array<string>} lines - 文件行数组
+ * @returns {Array<string>} 处理后的行数组
+ */
+function preprocessLines(lines) {
+  if (lines.length < 2) return lines;
+  
+  const firstLine = lines[0];
+  // 检查标题行是否以TAB开头
+  if (!firstLine.startsWith('\t')) return lines;
+  
+  const headerCells = firstLine.split('\t');
+  const headerColCount = headerCells.length;
+  
+  // 检查前10行数据行的列数
+  const maxCheckRows = Math.min(10, lines.length - 1);
+  let dataColCount = 0;
+  let allDataRowsHaveOneLessColumn = true;
+  
+  for (let i = 1; i <= maxCheckRows; i++) {
+    const dataLine = lines[i];
+    if (!dataLine || dataLine.trim() === '') continue;
+    
+    const dataCells = dataLine.split('\t');
+    if (dataColCount === 0) {
+      dataColCount = dataCells.length;
+    }
+    
+    // 如果数据行比标题行少一列，说明标题行第一个TAB是多余的
+    if (dataCells.length !== headerColCount - 1) {
+      allDataRowsHaveOneLessColumn = false;
+      break;
+    }
+  }
+  
+  // 如果所有数据行都比标题行少一列，去掉标题行的第一个TAB
+  if (allDataRowsHaveOneLessColumn && dataColCount > 0) {
+    const newFirstLine = firstLine.substring(1); // 去掉第一个TAB
+    const newLines = [newFirstLine, ...lines.slice(1)];
+    return newLines;
+  }
+  
+  return lines;
+}
+
 function parseCSVContent(lines) {
   if (lines.length === 0) return [];
   
+  // 预处理：处理标题行多余TAB键的情况
+  const processedLines = preprocessLines(lines);
+  
   const data = [];
   let headerRow = [];
-  let hasHeader = false;
+  
+  // 处理多行标题的情况（用户提供的格式）
+  // 第一行：设备名称，第二行：参数名称，第三行：单位
+  if (processedLines.length >= 3) {
+    const line1 = processedLines[0];
+    const line2 = processedLines[1];
+    const line3 = processedLines[2];
+    
+    let delimiter = ',';
+    if (line1.includes('\t')) delimiter = '\t';
+    
+    const cells1 = line1.split(delimiter).map(cell => cell.trim());
+    const cells2 = line2.split(delimiter).map(cell => cell.trim());
+    const cells3 = line3.split(delimiter).map(cell => cell.trim());
+    
+    // 检查是否为多行标题格式
+    // 特征：第一行第一列为空，第二行第一列为'时间'，第三行第一列为空
+    if (cells1[0] === '' && cells2[0] === '时间' && cells3[0] === '') {
+      // 合并多行标题
+      headerRow = [];
+      for (let i = 0; i < cells1.length; i++) {
+        const parts = [];
+        if (cells1[i]) parts.push(cells1[i]);
+        if (cells2[i]) parts.push(cells2[i]);
+        if (cells3[i]) parts.push(cells3[i]);
+        headerRow.push(parts.join(' ') || `列${i + 1}`);
+      }
+      // 第一列设置为'时间'
+      headerRow[0] = '时间';
+      data.push(headerRow);
+      
+      // 处理数据行（从第四行开始）
+      for (let i = 3; i < processedLines.length; i++) {
+        const line = processedLines[i];
+        let row;
+        if (line.includes('\t')) {
+          row = line.split('\t').map(cell => cell.trim());
+        } else if (line.includes(',')) {
+          row = line.split(',').map(cell => cell.trim());
+        } else {
+          row = [line.trim()];
+        }
+        if (row.length > 0 && row[0].trim() !== '') {
+          data.push(row);
+        }
+      }
+      return data;
+    }
+  }
   
   // 检查第一行是否包含冒号分隔的键值对（除了时间列）
-  const firstLine = lines[0];
+  const firstLine = processedLines[0];
+  let hasHeader = false;
+  
   if (firstLine.includes('\t')) {
     const cells = firstLine.split('\t');
     // 检查除第一列外的其他列是否包含冒号
@@ -145,7 +246,7 @@ function parseCSVContent(lines) {
     data.push(headerRow);
     
     // 处理数据行（从第一行开始，因为第一行也包含数据）
-    lines.forEach(line => {
+    processedLines.forEach(line => {
       const row = line.split('\t').map((cell, index) => {
         if (index === 0) {
           return cell.trim();
@@ -174,7 +275,7 @@ function parseCSVContent(lines) {
        data.push(headerRow);
        
        // 处理数据行
-       lines.forEach(line => {
+       processedLines.forEach(line => {
          const parts = line.trim().split(/\s+/);
          if (parts.length >= 2) {
            // 第一部分是日期，第二部分是时间，合并为完整的日期时间
@@ -189,7 +290,7 @@ function parseCSVContent(lines) {
        });
      } else {
       // 普通CSV格式或TAB分隔的格式
-      lines.forEach(line => {
+      processedLines.forEach(line => {
         let row;
         if (line.includes('\t')) {
           row = line.split('\t').map(cell => cell.trim());
@@ -299,19 +400,7 @@ function detectEncoding(buffer) {
     return 'utf8bom';
   }
   
-  // 首先尝试UTF-8解码
-  try {
-    const decoder = new TextDecoder('utf-8', { fatal: true });
-    const text = decoder.decode(buffer);
-    // 检查解码后的文本是否包含有效字符
-    if (text.length > 0) {
-      return 'utf8';
-    }
-  } catch (e) {
-    // UTF-8解码失败，继续尝试GB18030
-  }
-  
-  // 检测GB2312特征
+  // 首先检测GB2312特征
   const hasGBFeatures = hasGB2312Features(buffer);
   
   if (hasGBFeatures) {
@@ -320,11 +409,27 @@ function detectEncoding(buffer) {
       const decoder = new TextDecoder('gb18030', { fatal: false });
       const text = decoder.decode(buffer);
       if (text.length > 0) {
-        return 'gb18030';
+        // 检查解码后的文本是否包含中文字符
+        if (/[\u4e00-\u9fa5]/.test(text)) {
+          return 'gb18030';
+        }
       }
     } catch (e) {
-      // 解码失败，返回utf8
+      // 解码失败，继续尝试UTF-8
     }
+  }
+  
+  // 尝试UTF-8解码
+  try {
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    const text = decoder.decode(buffer);
+    // 检查解码后的文本是否包含有效字符
+    if (text.length > 0) {
+      return 'utf8';
+    }
+  } catch (e) {
+    // UTF-8解码失败，返回GB18030
+    return 'gb18030';
   }
   
   // 默认返回utf8

@@ -5,7 +5,7 @@
  * 协调各个模块之间的通信。
  */
 
-import { elements, selectedControlTime, originalData, currentPage, updateVariables } from './config.js';
+import { elements, selectedControlTime, originalData, currentPage, updateVariables, equalAxisEnabled, toggleLineEnabled } from './config.js';
 import { parseTime, formatDateTime, updateStatus } from './utils.js';
 import { 
   handleDataFileUpload, 
@@ -226,6 +226,50 @@ function handleAutoTimeRange() {
 }
 
 /**
+ * 切换整齐坐标轴模式
+ * 当X轴为数值类型时，切换是否使用等值坐标间距
+ */
+function toggleEqualAxis() {
+  const newValue = !equalAxisEnabled;
+  updateVariables({ equalAxisEnabled: newValue });
+  if (newValue) {
+    elements.equalAxisBtn.classList.remove('btn-outline-info');
+    elements.equalAxisBtn.classList.add('btn-info');
+    elements.equalAxisBtn.textContent = '✅ 整齐坐标轴';
+    updateStatus('✅ 已开启整齐坐标轴模式');
+  } else {
+    elements.equalAxisBtn.classList.remove('btn-info');
+    elements.equalAxisBtn.classList.add('btn-outline-info');
+    elements.equalAxisBtn.textContent = '📐 整齐坐标轴';
+    updateStatus('ℹ️ 已关闭整齐坐标轴模式');
+  }
+  // 重新绘制图表
+  drawChart();
+}
+
+/**
+ * 切换去掉连线模式
+ * 切换是否显示数据点之间的连线
+ */
+function toggleLineMode() {
+  const newValue = !toggleLineEnabled;
+  updateVariables({ toggleLineEnabled: newValue });
+  if (newValue) {
+    elements.toggleLineBtn.classList.remove('btn-outline-warning');
+    elements.toggleLineBtn.classList.add('btn-warning');
+    elements.toggleLineBtn.textContent = '✅ 去掉连线';
+    updateStatus('✅ 已开启只显示数据点模式');
+  } else {
+    elements.toggleLineBtn.classList.remove('btn-warning');
+    elements.toggleLineBtn.classList.add('btn-outline-warning');
+    elements.toggleLineBtn.textContent = '🔗 去掉连线';
+    updateStatus('ℹ️ 已关闭只显示数据点模式');
+  }
+  // 重新绘制图表
+  drawChart();
+}
+
+/**
  * 初始化事件监听器
  * @example
  * initEventListeners();
@@ -261,14 +305,37 @@ function initEventListeners() {
   elements.selectAllYAxisBtn.addEventListener('click', selectAllYAxis);
   elements.selectAllYAxis2Btn.addEventListener('click', selectAllYAxis2);
   
+  // X轴选择器变化时更新时间范围
+  elements.xAxisSelect.addEventListener('change', function() {
+    // 重新自动设置时间范围
+    autoTimeRange();
+  });
+  
+  // 手动选择编码checkbox事件
+  elements.manualEncoding.addEventListener('change', function() {
+    if (this.checked) {
+      // 显示编码选择器
+      elements.encodingSelector.classList.remove('d-none');
+      // 如果已经选择了文件，更新编码预览
+      if (elements.dataFileInput.files.length > 0) {
+        updateEncodingPreview();
+      }
+    } else {
+      // 隐藏编码选择器
+      elements.encodingSelector.classList.add('d-none');
+    }
+  });
+  
   // 时间范围选择
   elements.applyTimeRangeBtn.addEventListener('click', applyTimeRange);
   elements.resetTimeRangeBtn.addEventListener('click', resetTimeRange);
   elements.autoTimeRangeBtn.addEventListener('click', handleAutoTimeRange);
+  elements.equalAxisBtn.addEventListener('click', toggleEqualAxis);
   
   // 操作按钮
   elements.exportChartBtn.addEventListener('click', exportChart);
   elements.exportDataBtn.addEventListener('click', exportData);
+  elements.toggleLineBtn.addEventListener('click', toggleLineMode);
   elements.resetDataBtn.addEventListener('click', resetData);
   elements.clearAllBtn.addEventListener('click', clearAll);
   

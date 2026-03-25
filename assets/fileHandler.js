@@ -26,8 +26,17 @@ function handleDataFileUpload(e) {
   if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
     handleExcelFile(file);
   } else {
-    // 自动检测编码并直接解析，不需要人工确认
-    autoDetectAndProcessDataFile(file);
+    // 检查是否需要手动选择编码
+    const isManualEncoding = elements.manualEncoding && elements.manualEncoding.checked;
+    
+    if (isManualEncoding) {
+      // 显示编码选择器，让用户手动选择编码
+      elements.encodingSelector.classList.remove('d-none');
+      updateEncodingPreview();
+    } else {
+      // 自动检测编码并处理
+      autoDetectAndProcessDataFile(file);
+    }
   }
 }
 
@@ -224,6 +233,19 @@ function updateEncodingPreview() {
         };
         elements.dataEncodingResult.textContent = `自动检测结果：${encodingNames[detectedEncoding] || detectedEncoding.toUpperCase()}`;
         elements.dataEncodingResult.classList.remove('d-none');
+        
+        // 检查预览内容是否有乱码
+        const hasGarbledChars = /[\ufffd\x00-\x1f\x7f-\x9f]/.test(previewContent);
+        
+        // 只有当用户没有勾选"手动选择编码"时，才自动确认编码
+        const isManualEncoding = elements.manualEncoding && elements.manualEncoding.checked;
+        if (!isManualEncoding) {
+          // 自动确认编码，无论是否有乱码
+          // 用户要求：识别编码后，自动应用编码结果，不需要手动点击按钮
+          setTimeout(() => {
+            confirmDataEncoding();
+          }, 300); // 延迟一下，让用户看到检测结果
+        }
       } else {
         elements.dataEncodingResult.classList.add('d-none');
       }
@@ -263,6 +285,12 @@ function confirmDataEncoding() {
       const lines = content.split('\n').filter(line => line.trim() !== '');
       const parsedData = parseCSVContent(lines);
       processDataFile(parsedData, finalEncoding);
+      
+      // 只有当用户没有勾选"手动选择编码"时，才隐藏编码选择器
+      const isManualEncoding = elements.manualEncoding && elements.manualEncoding.checked;
+      if (!isManualEncoding) {
+        elements.encodingSelector.classList.add('d-none');
+      }
     } catch (error) {
       elements.dataEncodingResult.textContent = '编码解析失败，请尝试其他编码';
       elements.dataEncodingResult.classList.remove('d-none');
@@ -312,6 +340,15 @@ function updateControlEncodingPreview() {
         };
         elements.controlEncodingResult.textContent = `自动检测结果：${encodingNames[detectedEncoding] || detectedEncoding.toUpperCase()}`;
         elements.controlEncodingResult.classList.remove('d-none');
+        
+        // 检查预览内容是否有乱码
+        const hasGarbledChars = /[\ufffd\x00-\x1f\x7f-\x9f]/.test(previewContent);
+        
+        // 自动确认编码，无论是否有乱码
+        // 用户要求：识别编码后，自动应用编码结果，不需要手动点击按钮
+        setTimeout(() => {
+          confirmControlEncoding();
+        }, 300); // 延迟一下，让用户看到检测结果
       } else {
         elements.controlEncodingResult.classList.add('d-none');
       }
@@ -352,6 +389,9 @@ function confirmControlEncoding() {
       const lines = content.split('\n').filter(line => line.trim() !== '');
       const parsedData = parseCSVContent(lines);
       processControlFile(parsedData, finalEncoding);
+      
+      // 编码确认后，隐藏编码选择器
+      elements.controlEncodingSelector.classList.add('d-none');
     } catch (error) {
       elements.controlEncodingResult.textContent = '编码解析失败，请尝试其他编码';
       elements.controlEncodingResult.classList.remove('d-none');
@@ -461,12 +501,18 @@ function processDataFile(data, encoding) {
     }
   }
   
+  // 过滤空列（包含空数据的列）
+  let dataAfterEmptyFilter;
+  const nonEmptyColumns = filterEmptyColumns(newOriginalData, newHeaders);
+  newHeaders = nonEmptyColumns.headers;
+  dataAfterEmptyFilter = nonEmptyColumns.data;
+  
   // 过滤全0列
   let newFilteredData;
   if (elements.filterZeroColumns.checked) {
-    newFilteredData = filterZeroColumns(newOriginalData, newHeaders);
+    newFilteredData = filterZeroColumns(dataAfterEmptyFilter, newHeaders);
   } else {
-    newFilteredData = [...newOriginalData];
+    newFilteredData = [...dataAfterEmptyFilter];
   }
   
   // 更新全局变量
@@ -492,6 +538,46 @@ function processDataFile(data, encoding) {
   // 自动检测成功后，不显示编码选择器
   // 但为了让用户知道检测结果，我们更新预览但不显示选择器
   updateEncodingPreview();
+}
+
+/**
+ * 过滤空列（所有数据都为空的列）
+ * @param {Array<Array<string>>} data - 数据二维数组
+ * @param {Array<string>} headerList - 表头数组
+ * @returns {Object} 包含过滤后的headers和data
+ * @example
+ * const result = filterEmptyColumns(data, headers);
+ */
+function filterEmptyColumns(data, headerList) {
+  if (data.length === 0 || headerList.length === 0) {
+    return { headers: headerList, data: data };
+  }
+  
+  const nonEmptyColumns = [];
+  for (let i = 0; i < headerList.length; i++) {
+    let hasData = false;
+    for (let j = 0; j < data.length; j++) {
+      const cell = data[j][i];
+      if (cell !== undefined && cell !== null && cell.trim() !== '') {
+        hasData = true;
+        break;
+      }
+    }
+    if (hasData) {
+      nonEmptyColumns.push(i);
+    }
+  }
+  
+  // 如果所有列都有数据，直接返回原数据
+  if (nonEmptyColumns.length === headerList.length) {
+    return { headers: headerList, data: data };
+  }
+  
+  // 更新 headers 和数据
+  const newHeaders = nonEmptyColumns.map(i => headerList[i]);
+  const newData = data.map(row => nonEmptyColumns.map(i => row[i]));
+  
+  return { headers: newHeaders, data: newData };
 }
 
 /**
@@ -646,6 +732,7 @@ function updateUIAfterDataLoad() {
   elements.selectAllYAxisBtn.disabled = false;
   elements.selectAllYAxis2Btn.disabled = false;
   elements.timeRangeSelector.classList.remove('d-none');
+  elements.equalAxisBtn.classList.remove('d-none');
   
   // 自动设置时间范围
   autoTimeRange();
@@ -660,6 +747,13 @@ function updateUIAfterDataLoad() {
  * updateAxisSelectors();
  */
 function updateAxisSelectors() {
+  // 保存用户的选择和滚动位置
+  const selectedXAxis = elements.xAxisSelect.value;
+  const selectedYAxis = Array.from(elements.yAxisSelect.selectedOptions).map(option => option.value);
+  const selectedYAxis2 = Array.from(elements.yAxis2Select.selectedOptions).map(option => option.value);
+  const yAxisScrollTop = elements.yAxisSelect.scrollTop;
+  const yAxis2ScrollTop = elements.yAxis2Select.scrollTop;
+  
   elements.xAxisSelect.innerHTML = '';
   elements.yAxisSelect.innerHTML = '';
   elements.yAxis2Select.innerHTML = '';
@@ -669,6 +763,9 @@ function updateAxisSelectors() {
       const xOption = document.createElement('option');
       xOption.value = index;
       xOption.textContent = header;
+      if (index.toString() === selectedXAxis) {
+        xOption.selected = true;
+      }
       elements.xAxisSelect.appendChild(xOption);
       
       // 只有当X轴未选择时间列时，才将时间列添加到Y轴选项
@@ -677,11 +774,17 @@ function updateAxisSelectors() {
         const yOption = document.createElement('option');
         yOption.value = index;
         yOption.textContent = header;
+        if (selectedYAxis.includes(index.toString())) {
+          yOption.selected = true;
+        }
         elements.yAxisSelect.appendChild(yOption);
         
         const y2Option = document.createElement('option');
         y2Option.value = index;
         y2Option.textContent = header;
+        if (selectedYAxis2.includes(index.toString())) {
+          y2Option.selected = true;
+        }
         elements.yAxis2Select.appendChild(y2Option);
       }
     });
@@ -689,6 +792,12 @@ function updateAxisSelectors() {
     elements.xAxisSelect.disabled = false;
     elements.yAxisSelect.disabled = false;
     elements.yAxis2Select.disabled = false;
+    
+    // 恢复滚动位置
+    setTimeout(() => {
+      elements.yAxisSelect.scrollTop = yAxisScrollTop;
+      elements.yAxis2Select.scrollTop = yAxis2ScrollTop;
+    }, 0);
   }
 }
 

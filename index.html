@@ -66,39 +66,57 @@
             </button>
           </div>
           
-          <!-- 编码选择器 -->
-          <div class="encoding-selector d-none" id="encodingSelector">
-            <label class="form-label fw-bold mb-2">🔤 文件编码选择（解决乱码）：</label>
-            <select class="form-select mb-2" id="dataFileEncoding">
-              <option value="auto">自动识别（推荐）</option>
-              <option value="gb2312">GB2312 (简体中文)</option>
-              <option value="gbk">GBK (扩展中文)</option>
-              <option value="utf8">UTF-8</option>
-              <option value="utf8bom">UTF-8 with BOM</option>
-              <option value="gb18030">GB18030 (全面中文支持)</option>
-            </select>
-            
-            <!-- 编码检测结果显示区域 -->
-            <div id="dataEncodingResult" class="encoding-result d-none"></div>
-            
-            <div class="encoding-preview" id="encodingPreview">
-              选择编码后将显示文件内容预览...
+          <!-- 高级选项 -->
+          <div class="advanced-options mt-3 d-flex flex-wrap gap-4">
+            <!-- 全0列处理选项 -->
+            <div class="zero-column-option flex-1 min-w-[250px]">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="filterZeroColumns">
+                <label class="form-check-label" for="filterZeroColumns">
+                  📊 自动过滤全0列数据
+                </label>
+              </div>
+              <div class="form-text text-muted small">
+                勾选后将自动过滤掉所有值为0的列，使数据更加简洁
+              </div>
             </div>
-            <button class="btn btn-sm btn-primary mt-2" id="confirmEncodingBtn">
-              ✅ 确认编码并解析文件
-            </button>
-          </div>
-          
-          <!-- 全0列处理选项 -->
-          <div class="zero-column-option mt-3">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="filterZeroColumns">
-              <label class="form-check-label" for="filterZeroColumns">
-                📊 自动过滤全0列数据
-              </label>
-            </div>
-            <div class="form-text text-muted">
-              勾选后将自动过滤掉所有值为0的列，使数据更加简洁
+            
+            <!-- 手动选择编码选项 -->
+            <div class="manual-encoding-option flex-1 min-w-[250px]">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="manualEncoding">
+                <label class="form-check-label" for="manualEncoding">
+                  🔤 手动选择编码（自动检测失败时使用）
+                </label>
+              </div>
+              <div class="form-text text-muted small">
+                勾选后将显示编码选择器，允许手动选择文件编码
+              </div>
+              
+              <!-- 编码选择器 -->
+              <div class="encoding-selector d-none" id="encodingSelector">
+                <div class="mt-2 p-3 bg-light rounded border border-light">
+                  <label class="form-label fw-bold mb-2">🔤 文件编码选择（解决乱码）：</label>
+                  <select class="form-select mb-2" id="dataFileEncoding">
+                    <option value="auto">自动识别（推荐）</option>
+                    <option value="gb2312">GB2312 (简体中文)</option>
+                    <option value="gbk">GBK (扩展中文)</option>
+                    <option value="utf8">UTF-8</option>
+                    <option value="utf8bom">UTF-8 with BOM</option>
+                    <option value="gb18030">GB18030 (全面中文支持)</option>
+                  </select>
+                  
+                  <!-- 编码检测结果显示区域 -->
+                  <div id="dataEncodingResult" class="encoding-result d-none"></div>
+                  
+                  <div class="encoding-preview" id="encodingPreview">
+                    选择编码后将显示文件内容预览...
+                  </div>
+                  <button class="btn btn-sm btn-primary mt-2" id="confirmEncodingBtn">
+                    ✅ 确认编码并解析文件
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -221,7 +239,7 @@
       <div class="row mt-3">
         <div class="col-md-12 d-flex justify-content-center">
           <button class="btn btn-primary w-50" id="drawChartBtn" disabled>
-            📈 绘制折线图
+            📈 绘制图形
           </button>
         </div>
       </div>
@@ -280,15 +298,21 @@
       <button class="btn btn-outline-secondary me-2" id="resetDataBtn" disabled>
         🔄 重置为原始数据
       </button>
-      <button class="btn btn-outline-primary" id="clearAllBtn">
+      <button class="btn btn-outline-primary me-2" id="clearAllBtn">
         🧹 清空所有文件
+      </button>
+      <button class="btn btn-outline-warning me-2" id="toggleLineBtn">
+        🔗 去掉连线
+      </button>
+      <button class="btn btn-outline-info" id="equalAxisBtn">
+        📐 整齐坐标轴
       </button>
     </div>
 
     <!-- 第四部分：折线图区域 -->
     <div class="chart-container" id="chartContainer">
       <div class="d-flex align-items-center justify-content-center h-100 text-muted">
-        📊 未绘制图表，上传数据文件并配置坐标轴后点击「绘制折线图」
+        📊 未绘制图表，上传数据文件并配置坐标轴后点击「绘制图形」
       </div>
       <canvas id="lineChart" style="display: none;"></canvas>
     </div>
