@@ -81,6 +81,30 @@ let selectedControlTime = null;
 let equalAxisEnabled = false;
 let toggleLineEnabled = false; // 去掉连线模式
 
+/**
+ * 当前加载的数据文件名
+ * @type {string|null}
+ */
+let currentFileName = null;
+
+/**
+ * 当前加载的数据文件日期（最后修改时间）
+ * @type {Date|null}
+ */
+let currentFileDate = null;
+
+/**
+ * 检测到的日期（从文件名或文件属性识别）
+ * @type {string|null}
+ */
+let detectedDate = null;
+
+/**
+ * 日期来源描述
+ * @type {string}
+ */
+let detectedDateSource = '未知';
+
 // 使用getter函数来获取状态值
 export function getToggleLineEnabled() {
   return toggleLineEnabled;
@@ -182,7 +206,16 @@ const elements = {
   sliderHandleMin: document.getElementById('sliderHandleMin'),           // 滑块最小值手柄
   sliderHandleMax: document.getElementById('sliderHandleMax'),           // 滑块最大值手柄
   sliderValueMin: document.getElementById('sliderValueMin'),             // 滑块最小值标签
-  sliderValueMax: document.getElementById('sliderValueMax')              // 滑块最大值标签
+  sliderValueMax: document.getElementById('sliderValueMax'),             // 滑块最大值标签
+  
+  // 日期识别元素
+  detectedDateSource: document.getElementById('detectedDateSource'),     // 日期来源显示
+  detectedDateValue: document.getElementById('detectedDateValue'),       // 识别日期显示
+  detectedDateInput: document.getElementById('detectedDateInput'),       // 日期修改输入框
+  detectedDateEdit: document.getElementById('detectedDateEdit'),         // 日期修改区域
+  editDetectedDateBtn: document.getElementById('editDetectedDateBtn'),   // 修改日期按钮
+  confirmDetectedDateBtn: document.getElementById('confirmDetectedDateBtn'), // 确认日期按钮
+  cancelDetectedDateBtn: document.getElementById('cancelDetectedDateBtn')  // 取消日期按钮
 };
 
 // 导出配置
@@ -200,6 +233,10 @@ export {
   selectedControlTime,
   equalAxisEnabled,
   toggleLineEnabled,
+  currentFileName,
+  currentFileDate,
+  detectedDate,
+  detectedDateSource,
   elements
 };
 
@@ -223,4 +260,8 @@ export function updateVariables(newValues) {
   if (newValues.selectedControlTime !== undefined) selectedControlTime = newValues.selectedControlTime;
   if (newValues.equalAxisEnabled !== undefined) equalAxisEnabled = newValues.equalAxisEnabled;
   if (newValues.toggleLineEnabled !== undefined) toggleLineEnabled = newValues.toggleLineEnabled;
+  if (newValues.currentFileName !== undefined) currentFileName = newValues.currentFileName;
+  if (newValues.currentFileDate !== undefined) currentFileDate = newValues.currentFileDate;
+  if (newValues.detectedDate !== undefined) detectedDate = newValues.detectedDate;
+  if (newValues.detectedDateSource !== undefined) detectedDateSource = newValues.detectedDateSource;
 }

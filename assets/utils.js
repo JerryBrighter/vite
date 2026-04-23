@@ -27,6 +27,7 @@ function parseTime(timeStr) {
     /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
     /^(\d{4})\/(\d{2})\/(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
     /^(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
+    /^(\d{2}):(\d{2}):(\d{2}):(\d{3})$/, // 支持 00:45:49:000 格式
     /^(\d{4})-(\d{2})-(\d{2})$/, 
     /^(\d{4})\/(\d{2})\/(\d{2})$/  ];
   
@@ -51,7 +52,14 @@ function parseTime(timeStr) {
       } else if (match.length === 5 && match[0].includes(':')) {
         // 只有时间（带毫秒）
         const [, hour, minute, second, ms] = match;
-        const milliseconds = ms ? parseFloat(ms) * 1000 : 0;
+        let milliseconds;
+        if (ms.startsWith('.')) {
+          // 格式：00:45:49.000
+          milliseconds = parseFloat(ms) * 1000;
+        } else {
+          // 格式：00:45:49:000
+          milliseconds = parseInt(ms);
+        }
         const date = new Date();
         date.setHours(hour, minute, second, milliseconds);
         if (!isNaN(date.getTime())) {
@@ -77,6 +85,111 @@ function parseTime(timeStr) {
   }
   
   return NaN;
+}
+
+/**
+ * 从文件名中解析日期
+ * @param {string} fileName - 文件名
+ * @returns {string|null} 解析出的日期字符串 "YYYY-MM-DD"，解析失败返回null
+ * @example
+ * parseDateFromFileName('2026-03-10_00-45-48_0 OBJECT D_step_20.txt'); // 返回 "2026-03-10"
+ * parseDateFromFileName('data_20231201.csv'); // 返回 "2023-12-01"
+ */
+function parseDateFromFileName(fileName) {
+  if (!fileName || typeof fileName !== 'string') {
+    return null;
+  }
+  
+  // 尝试从文件名中提取日期
+  const datePatterns = [
+    /(\d{4})[-_](\d{2})[-_](\d{2})/, // YYYY-MM-DD 或 YYYY_MM_DD
+    /(\d{8})/, // YYYYMMDD
+    /(\d{4})(\d{2})(\d{2})/ // YYYYMMDD（单独出现）
+  ];
+  
+  for (const pattern of datePatterns) {
+    const match = fileName.match(pattern);
+    if (match) {
+      const year = match[1];
+      const month = match[2].padStart(2, '0');
+      const day = match[3]?.padStart(2, '0') || '01';
+      
+      // 验证日期是否有效
+      if (parseInt(month) >= 1 && parseInt(month) <= 12 && parseInt(day) >= 1 && parseInt(day) <= 31) {
+        return `${year}-${month}-${day}`;
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * 规范化时间字符串为标准格式
+ * @param {string} timeStr - 时间字符串
+ * @param {object} options - 可选参数
+ * @param {string} options.fileName - 文件名，用于从文件名解析日期
+ * @param {Date} options.fileDate - 文件日期，用于当时间字符串没有日期时使用
+ * @param {string} options.detectedDate - 已检测到的日期（优先使用）
+ * @returns {string} 规范化后的标准时间字符串，如果原始数据只有时间则尝试从detectedDate、文件名或文件日期获取日期，输出 "YYYY-MM-DD HH:MM:SS.sss"，解析失败返回原字符串
+ * @example
+ * normalizeTime('00:45:49:000'); // 返回 "00:45:49.000"
+ * normalizeTime('00:45:49:000', { fileName: '2026-03-10_data.txt' }); // 返回 "2026-03-10 00:45:49.000"
+ * normalizeTime('00:45:49:000', { detectedDate: '2026-03-10' }); // 返回 "2026-03-10 00:45:49.000"
+ * normalizeTime('2023-12-01 12:00:00'); // 返回 "2023-12-01 12:00:00.000"
+ */
+function normalizeTime(timeStr, options = {}) {
+  if (!timeStr || typeof timeStr !== 'string') {
+    return timeStr || '';
+  }
+  
+  const timestamp = parseTime(timeStr);
+  if (isNaN(timestamp)) {
+    return timeStr;
+  }
+  
+  const date = new Date(timestamp);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+  
+  // 检查原始字符串是否包含日期（年份或日期格式）
+  const hasDate = /^\d{4}[-/]\d{2}[-/]\d{2}/.test(timeStr.trim());
+  
+  if (hasDate) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+  } else {
+    // 尝试获取日期，优先级：detectedDate > 文件名 > 文件日期
+    let dateStr = null;
+    
+    // 优先使用已检测到的日期
+    if (options.detectedDate) {
+      dateStr = options.detectedDate;
+    }
+    // 其次尝试从文件名解析日期
+    else if (options.fileName) {
+      dateStr = parseDateFromFileName(options.fileName);
+    }
+    // 最后使用文件日期
+    else if (options.fileDate instanceof Date) {
+      const fileYear = options.fileDate.getFullYear();
+      const fileMonth = String(options.fileDate.getMonth() + 1).padStart(2, '0');
+      const fileDay = String(options.fileDate.getDate()).padStart(2, '0');
+      dateStr = `${fileYear}-${fileMonth}-${fileDay}`;
+    }
+    
+    if (dateStr) {
+      // 有日期来源，输出完整的日期时间
+      return `${dateStr} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+    } else {
+      // 没有日期来源，只输出时间
+      return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+    }
+  }
 }
 
 /**
@@ -523,6 +636,8 @@ function decodeGB2312Fallback(buffer) {
 export {
   parseTime,
   formatDateTime,
+  normalizeTime,
+  parseDateFromFileName,
   parseCSVContent,
   updateStatus,
   detectEncoding,

@@ -5,8 +5,8 @@
  * 表格显示切换等功能。
  */
 
-import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, updateVariables, getToggleLineEnabled, getEqualAxisEnabled } from './config.js';
-import { parseTime, formatDateTime, updateStatus } from './utils.js';
+import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, currentPage, itemsPerPage, currentFileName, currentFileDate, detectedDate, updateVariables, getToggleLineEnabled, getEqualAxisEnabled } from './config.js';
+import { parseTime, formatDateTime, normalizeTime, updateStatus } from './utils.js';
 import { updateUIAfterDataLoad, updateTable } from './fileHandler.js';
 
 /**
@@ -17,15 +17,55 @@ import { updateUIAfterDataLoad, updateTable } from './fileHandler.js';
  */
 function drawChart() {
   const xIndex = parseInt(elements.xAxisSelect.value);
-  const yIndices = Array.from(elements.yAxisSelect.selectedOptions).map(option => parseInt(option.value));
-  const y2Indices = Array.from(elements.yAxis2Select.selectedOptions).map(option => parseInt(option.value));
+  const yIndices = Array.from(elements.yAxisSelect.selectedOptions).map(option => parseInt(option.value)).filter(index => !isNaN(index));
+  const y2Indices = Array.from(elements.yAxis2Select.selectedOptions).map(option => parseInt(option.value)).filter(index => !isNaN(index));
   
   if (yIndices.length === 0 && y2Indices.length === 0) {
     updateStatus('⚠️ 请至少选择一个Y轴数据列');
     return;
   }
   
+  // 准备canvas元素
+  elements.chartContainer.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.id = 'lineChart';
+  canvas.style.display = 'block';
+  canvas.style.height = '400px';
+  canvas.style.width = '100%';
+  canvas.style.border = '1px solid #ddd';
+  canvas.style.borderRadius = '8px';
+  elements.chartContainer.appendChild(canvas);
+  elements.chartContainer.style.height = '450px';
+  elements.chartContainer.style.overflow = 'hidden';
+  elements.chartContainer.style.border = '1px solid #ddd';
+  elements.chartContainer.style.borderRadius = '8px';
+  // 更新elements.lineChart引用
+  elements.lineChart = canvas;
+  
+  // 设置canvas实际尺寸 - 确保内部尺寸和显示尺寸匹配
+  const containerWidth = elements.chartContainer.clientWidth || 800;
+  const displayHeight = 400;
+  
+  // 设置canvas内部尺寸（用于绘图）
+  canvas.width = containerWidth;
+  canvas.height = displayHeight;
+  
+  // 设置canvas显示尺寸（CSS）- 确保显示尺寸和内部尺寸一致
+  canvas.style.width = containerWidth + 'px';
+  canvas.style.height = displayHeight + 'px';
+  canvas.style.maxWidth = '100%';
+  canvas.style.maxHeight = '100%';
+  
+  console.log('Canvas元素创建:', canvas);
+  console.log('Canvas内部尺寸:', canvas.width, 'x', canvas.height);
+  console.log('Canvas显示尺寸:', canvas.style.width, 'x', canvas.style.height);
+  console.log('容器宽度:', containerWidth);
+  
   const ctx = elements.lineChart.getContext('2d');
+  console.log('Context:', ctx);
+  
+  // 强制重绘
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   // 销毁现有图表
   if (currentChart) {
@@ -35,7 +75,20 @@ function drawChart() {
   // 检查X轴是否为数值类型（不是时间/日期）
   // 如果是数值类型，需要对数据进行排序
   let sortedData = [...filteredData];
-  const xColumnValues = filteredData.map(row => row[xIndex]);
+  
+  // 处理大数据量：如果数据超过1000行，进行抽样
+  if (sortedData.length > 1000) {
+    const sampleSize = 1000;
+    const step = Math.ceil(sortedData.length / sampleSize);
+    const sampledData = [];
+    for (let i = 0; i < sortedData.length; i += step) {
+      sampledData.push(sortedData[i]);
+    }
+    sortedData = sampledData;
+    updateStatus(`⚠️ 数据量较大（${filteredData.length}行），已抽样显示${sortedData.length}行`);
+  }
+  
+  const xColumnValues = sortedData.map(row => row[xIndex]);
   
   // 检测是否为时间格式
   const isTimeFormat = (val) => {
@@ -133,7 +186,11 @@ function drawChart() {
   }
   
   // 准备数据
-  const labels = sortedData.map(row => row[xIndex]);
+  const labels = sortedData.map(row => normalizeTime(row[xIndex], { 
+    fileName: currentFileName, 
+    fileDate: currentFileDate,
+    detectedDate: detectedDate
+  }));
   const datasets = [];
   
   // 颜色配置
@@ -164,7 +221,7 @@ function drawChart() {
       borderWidth: 2,
       tension: 0.2,
       fill: false,
-      showLine: !getToggleLineEnabled(),
+      showLine: true,
       pointRadius: 2,
       pointHoverRadius: 4,
       pointBackgroundColor: color.border,
@@ -188,7 +245,7 @@ function drawChart() {
       backgroundColor: color.background,
       borderWidth: 2,
       tension: 0.2,
-      showLine: !getToggleLineEnabled(),
+      showLine: true,
       fill: false,
       pointRadius: 2,
       pointHoverRadius: 4,
@@ -199,7 +256,45 @@ function drawChart() {
     colorIndex++;
   });
   
+  // 添加调试信息
+  console.log('绘制图表 - 数据检查:');
+  console.log('X轴索引:', xIndex);
+  console.log('Y轴索引:', yIndices);
+  console.log('右侧Y轴索引:', y2Indices);
+  console.log('数据长度:', sortedData.length);
+  console.log('标签数量:', labels.length);
+  console.log('数据集数量:', datasets.length);
+  console.log('标签示例:', labels.slice(0, 3));
+  console.log('isNumericXAxis:', isNumericXAxis);
+  
+  // 检查每个数据集的数据
+  datasets.forEach((dataset, index) => {
+    console.log(`数据集 ${index} (${dataset.label}) 数据长度:`, dataset.data.length);
+    console.log(`数据集 ${index} 前5个数据点:`, dataset.data.slice(0, 5));
+    
+    // 计算数据范围
+    const numericData = dataset.data.filter(v => typeof v === 'number' && !isNaN(v));
+    if (numericData.length > 0) {
+      const min = Math.min(...numericData);
+      const max = Math.max(...numericData);
+      const range = max - min;
+      console.log(`数据集 ${index} 数据范围: ${min.toFixed(6)} - ${max.toFixed(6)} (范围: ${range.toFixed(6)})`);
+    }
+  });
+  
   // 创建图表
+  console.log('图表配置 - 数据集详情:');
+  datasets.forEach((dataset, index) => {
+    console.log(`数据集 ${index}:`, {
+      label: dataset.label,
+      borderColor: dataset.borderColor,
+      borderWidth: dataset.borderWidth,
+      showLine: dataset.showLine,
+      dataLength: dataset.data.length,
+      sampleData: dataset.data.slice(0, 3)
+    });
+  });
+  
   const chart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -207,17 +302,18 @@ function drawChart() {
       datasets: datasets
     },
     options: {
-      responsive: true,
+      responsive: false,
       maintainAspectRatio: false,
-      backgroundColor: 'white',
-      animation: false,
+      backgroundColor: '#ffffff',
+      animation: true,
+      animationDuration: 1000,
       interaction: {
         mode: 'index',
         intersect: false
       },
       scales: {
         x: {
-          type: isNumericXAxis ? 'linear' : 'category',
+          type: 'category',
           title: {
             display: true,
             text: headers[xIndex]?.trim() || 'X轴',
@@ -233,22 +329,17 @@ function drawChart() {
             minRotation: 45,
             maxTicksLimit: 21,
             font: {
-              family: "'Microsoft YaHei', sans-serif"
+              family: "'Microsoft YaHei', sans-serif",
+              size: 11
             },
-            callback: function(value, index, values) {
-              const step = Math.ceil(values.length / 21); // 增加总标签数量
-              // 显示第一个标签、最后一个标签以及步长对应的标签
-              return index === 0 || index === values.length - 1 || index % step === 0 ? this.getLabelForValue(value) : '';
-            },
-            align: 'end'
+            color: '#333'
           },
           grid: {
             display: true,
-            color: 'rgba(0, 0, 0, 0.1)',
+            color: 'rgba(0, 0, 0, 0.08)',
             drawTicks: true,
             tickLength: 5
-          },
-          ...(isNumericXAxis && getEqualAxisEnabled() ? { min: xMin, max: xMax } : {})
+          }
         },
         y: {
           type: 'linear',
@@ -335,6 +426,14 @@ function drawChart() {
     }
   });
   
+  console.log('图表创建成功:', chart);
+  
+  // 确保图表正确渲染
+  setTimeout(() => {
+    chart.update('resize');
+    console.log('图表已更新');
+  }, 100);
+  
   // 更新全局变量
   updateVariables({
     xAxisIndex: xIndex,
@@ -342,14 +441,7 @@ function drawChart() {
     yAxis2Indices: y2Indices,
     currentChart: chart
   });
-  
-  // 显示图表
-  elements.chartContainer.innerHTML = '';
-  elements.chartContainer.appendChild(elements.lineChart);
-  elements.lineChart.style.display = 'block';
-  elements.lineChart.style.height = '400px';
-  elements.chartContainer.style.height = '450px';
-  elements.chartContainer.style.overflow = 'hidden';
+
   
   // 添加自定义图例
   addChartLegend(datasets);
@@ -507,12 +599,20 @@ function exportData() {
     
     // 添加数据行
     filteredData.forEach(row => {
-      const rowData = row.map(cell => {
+      const rowData = row.map((cell, index) => {
         if (cell === null || cell === undefined) {
           return '';
         }
+        // 对第一列（时间列）进行规范化处理
+        let cellStr = String(cell);
+        if (index === 0) {
+          cellStr = normalizeTime(cellStr, { 
+            fileName: currentFileName, 
+            fileDate: currentFileDate,
+            detectedDate: detectedDate
+          });
+        }
         // 处理包含逗号、引号或换行符的单元格
-        const cellStr = String(cell);
         if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
           return `"${cellStr.replace(/"/g, '""')}"`;
         }
@@ -1010,41 +1110,39 @@ function updateXAxisSliderPosition(startIndex, endIndex) {
  * @example
  * addSliderEvents();
  */
+let sliderEventsAdded = false;
+
 function addSliderEvents() {
+  if (sliderEventsAdded) return;
+  
   const sliderWrapper = elements.sliderHandleMin.parentElement;
   let isDragging = false;
   let draggingHandle = null;
   
-  // 计算滑块位置百分比
   function calculatePercent(e) {
     const rect = sliderWrapper.getBoundingClientRect();
     const x = e.clientX - rect.left;
     return Math.max(0, Math.min(100, (x / rect.width) * 100));
   }
   
-  // 鼠标按下事件
   function handleMouseDown(e) {
     if (e.target === elements.sliderHandleMin || e.target === elements.sliderHandleMax) {
       isDragging = true;
       draggingHandle = e.target;
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
-      e.preventDefault(); // 防止默认行为
+      e.preventDefault();
     }
   }
   
-  // 鼠标移动事件
   function handleMouseMove(e) {
     if (!isDragging || !draggingHandle) return;
     
     const percent = calculatePercent(e);
     const currentMin = parseFloat(elements.sliderHandleMin.style.left) || 0;
     const currentMax = parseFloat(elements.sliderHandleMax.style.left) || 100;
-    
-    // 设置滑块间的最小距离为X轴范围的30分之一
     const minDistance = (currentMax - currentMin) / 30;
     
-    // 获取拖动条的范围（基于时间输入框设置的范围）
     const startTime = elements.timeRangeStart.value;
     const endTime = elements.timeRangeEnd.value;
     
@@ -1055,7 +1153,6 @@ function addSliderEvents() {
       const startTimestamp = new Date(startTime).getTime();
       const endTimestamp = new Date(endTime).getTime();
       
-      // 在原始数据中找到拖动条的范围
       for (let i = 0; i < originalData.length; i++) {
         const rowTime = parseTime(originalData[i][0]);
         if (!isNaN(rowTime) && rowTime >= startTimestamp) {
@@ -1083,7 +1180,6 @@ function addSliderEvents() {
         elements.sliderSelectedArea.style.width = `${currentMax - percent}%`;
         elements.sliderValueMin.style.left = `${percent}%`;
         
-        // 计算滑块在拖动条范围内的实际索引
         const index = rangeStartIndex + Math.floor((percent / 100) * (rangeLength - 1));
         elements.sliderValueMin.textContent = originalData[index]?.[0] || '开始';
       }
@@ -1093,25 +1189,21 @@ function addSliderEvents() {
         elements.sliderSelectedArea.style.width = `${percent - currentMin}%`;
         elements.sliderValueMax.style.left = `${percent}%`;
         
-        // 计算滑块在拖动条范围内的实际索引
         const index = rangeStartIndex + Math.floor((percent / 100) * (rangeLength - 1));
         elements.sliderValueMax.textContent = originalData[index]?.[0] || '结束';
       }
     }
   }
   
-  // 鼠标释放事件
   function handleMouseUp() {
     isDragging = false;
     draggingHandle = null;
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
     
-    // 应用滑块变化
     const startPercent = parseFloat(elements.sliderHandleMin.style.left) || 0;
     const endPercent = parseFloat(elements.sliderHandleMax.style.left) || 100;
     
-    // 获取拖动条的范围（基于时间输入框设置的范围）
     const startTime = elements.timeRangeStart.value;
     const endTime = elements.timeRangeEnd.value;
     
@@ -1122,7 +1214,6 @@ function addSliderEvents() {
       const startTimestamp = new Date(startTime).getTime();
       const endTimestamp = new Date(endTime).getTime();
       
-      // 在原始数据中找到拖动条的范围
       for (let i = 0; i < originalData.length; i++) {
         const rowTime = parseTime(originalData[i][0]);
         if (!isNaN(rowTime) && rowTime >= startTimestamp) {
@@ -1143,20 +1234,16 @@ function addSliderEvents() {
     const rangeLength = rangeEndIndex - rangeStartIndex + 1;
     if (rangeLength <= 0) return;
     
-    // 计算滑块在拖动条范围内的实际索引
     const startIndex = rangeStartIndex + Math.floor((startPercent / 100) * (rangeLength - 1));
     const endIndex = rangeStartIndex + Math.floor((endPercent / 100) * (rangeLength - 1));
     
     if (startIndex >= rangeStartIndex && endIndex <= rangeEndIndex && startIndex <= endIndex) {
-      // 基于原始数据过滤，不更新时间范围输入框
       const newFilteredData = originalData.slice(startIndex, endIndex + 1);
       
-      // 更新全局变量
       updateVariables({
         filteredData: newFilteredData
       });
       
-      // 更新表格和图表
       if (currentChart) {
         drawChart();
       }
@@ -1166,11 +1253,9 @@ function addSliderEvents() {
     }
   }
   
-  // 添加事件监听器
   elements.sliderHandleMin.addEventListener('mousedown', handleMouseDown);
   elements.sliderHandleMax.addEventListener('mousedown', handleMouseDown);
   
-  // 添加触摸事件支持
   elements.sliderHandleMin.addEventListener('touchstart', function(e) {
     const touch = e.touches[0];
     const mouseEvent = new MouseEvent('mousedown', {
@@ -1200,6 +1285,8 @@ function addSliderEvents() {
   });
   
   document.addEventListener('touchend', handleMouseUp);
+  
+  sliderEventsAdded = true;
 }
 
 /**

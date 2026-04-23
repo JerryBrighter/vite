@@ -5,8 +5,8 @@
  * Excel文件处理、数据解析和表格更新等功能。
  */
 
-import { elements, originalData, filteredData, headers, controlData, currentPage, itemsPerPage, updateVariables } from './config.js';
-import { parseCSVContent, updateStatus, parseTime, formatDateTime, detectEncoding, decodeData } from './utils.js';
+import { elements, originalData, filteredData, headers, controlData, currentPage, itemsPerPage, detectedDate, detectedDateSource, updateVariables } from './config.js';
+import { parseCSVContent, updateStatus, parseTime, formatDateTime, parseDateFromFileName, detectEncoding, decodeData } from './utils.js';
 import { initXAxisSlider } from './chartHandler.js';
 
 /**
@@ -23,6 +23,35 @@ function handleDataFileUpload(e) {
   elements.dataFileName.textContent = file.name;
   elements.dataFileNameDisplay.classList.remove('d-none');
   
+  // 识别日期
+  let detectedDate = null;
+  let detectedDateSource = '未知';
+  
+  // 首先尝试从文件名解析日期
+  const dateFromFileName = parseDateFromFileName(file.name);
+  if (dateFromFileName) {
+    detectedDate = dateFromFileName;
+    detectedDateSource = `文件名 (${file.name})`;
+    updateStatus(`📅 从文件名识别到日期：${detectedDate}`);
+  } else if (file.lastModified) {
+    // 如果文件名中没有日期，使用文件修改日期
+    const fileDate = new Date(file.lastModified);
+    detectedDate = `${fileDate.getFullYear()}-${String(fileDate.getMonth() + 1).padStart(2, '0')}-${String(fileDate.getDate()).padStart(2, '0')}`;
+    detectedDateSource = `文件修改时间`;
+    updateStatus(`📅 从文件修改时间识别到日期：${detectedDate}`);
+  }
+  
+  // 保存文件名、文件日期和识别到的日期
+  updateVariables({
+    currentFileName: file.name,
+    currentFileDate: file.lastModified ? new Date(file.lastModified) : new Date(),
+    detectedDate: detectedDate,
+    detectedDateSource: detectedDateSource
+  });
+  
+  // 更新日期识别UI显示
+  updateDetectedDateDisplay();
+  
   if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
     handleExcelFile(file);
   } else {
@@ -37,6 +66,17 @@ function handleDataFileUpload(e) {
       // 自动检测编码并处理
       autoDetectAndProcessDataFile(file);
     }
+  }
+}
+
+/**
+ * 更新日期识别结果显示
+ */
+function updateDetectedDateDisplay() {
+  if (elements.detectedDateSource && elements.detectedDateValue && elements.detectedDateInput) {
+    elements.detectedDateSource.textContent = `来源：${detectedDateSource}`;
+    elements.detectedDateValue.textContent = `识别日期：${detectedDate || '未识别'}`;
+    elements.detectedDateInput.value = detectedDate || '';
   }
 }
 

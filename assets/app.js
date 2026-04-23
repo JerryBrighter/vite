@@ -5,7 +5,7 @@
  * 协调各个模块之间的通信。
  */
 
-import { elements, selectedControlTime, originalData, currentPage, updateVariables, equalAxisEnabled, toggleLineEnabled } from './config.js';
+import { elements, selectedControlTime, originalData, currentPage, detectedDate, detectedDateSource, updateVariables, equalAxisEnabled, toggleLineEnabled } from './config.js';
 import { parseTime, formatDateTime, updateStatus } from './utils.js';
 import { 
   handleDataFileUpload, 
@@ -270,6 +270,65 @@ function toggleLineMode() {
 }
 
 /**
+ * 显示日期修改输入框
+ */
+function showDateEdit() {
+  if (elements.detectedDateEdit) {
+    elements.detectedDateEdit.classList.remove('d-none');
+  }
+  if (elements.editDetectedDateBtn) {
+    elements.editDetectedDateBtn.classList.add('d-none');
+  }
+}
+
+/**
+ * 隐藏日期修改输入框
+ */
+function hideDateEdit() {
+  if (elements.detectedDateEdit) {
+    elements.detectedDateEdit.classList.add('d-none');
+  }
+  if (elements.editDetectedDateBtn) {
+    elements.editDetectedDateBtn.classList.remove('d-none');
+  }
+}
+
+/**
+ * 确认修改日期
+ */
+function confirmDateEdit() {
+  const newDate = elements.detectedDateInput.value;
+  if (newDate) {
+    updateVariables({
+      detectedDate: newDate,
+      detectedDateSource: '手动设置'
+    });
+    updateStatus(`✅ 日期已修改为：${newDate}`);
+    // 更新显示
+    if (elements.detectedDateSource) {
+      elements.detectedDateSource.textContent = '来源：手动设置';
+    }
+    if (elements.detectedDateValue) {
+      elements.detectedDateValue.textContent = `识别日期：${newDate}`;
+    }
+    // 重新绘制图表
+    drawChart();
+  }
+  hideDateEdit();
+}
+
+/**
+ * 取消修改日期
+ */
+function cancelDateEdit() {
+  // 恢复原来的日期值
+  if (elements.detectedDateInput) {
+    elements.detectedDateInput.value = detectedDate || '';
+  }
+  hideDateEdit();
+}
+
+/**
  * 初始化事件监听器
  * @example
  * initEventListeners();
@@ -348,6 +407,17 @@ function initEventListeners() {
   
   // Excel工作表选择
   elements.confirmSheetBtn.addEventListener('click', confirmSheetSelection);
+  
+  // 日期修改按钮事件
+  if (elements.editDetectedDateBtn) {
+    elements.editDetectedDateBtn.addEventListener('click', showDateEdit);
+  }
+  if (elements.confirmDetectedDateBtn) {
+    elements.confirmDetectedDateBtn.addEventListener('click', confirmDateEdit);
+  }
+  if (elements.cancelDetectedDateBtn) {
+    elements.cancelDetectedDateBtn.addEventListener('click', cancelDateEdit);
+  }
 }
 
 /**

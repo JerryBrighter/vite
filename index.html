@@ -14,8 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- 引入本地样式 -->
   <link rel="stylesheet" href="./src/style.css">
-  <!-- 引入本地脚本 -->
-  <script src="./src/main.js"></script>
+
 </head>
 <body>
   <div class="container">
@@ -247,6 +246,30 @@
       <!-- X轴范围选择器 -->
       <div class="time-range-selector d-none" id="timeRangeSelector">
         <h5>📏 X轴范围设置：</h5>
+        
+        <!-- 日期识别区域 -->
+        <div class="date-recognition-section mb-3 p-3 bg-info-subtle rounded border border-info">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="fw-bold text-info">📅 日期识别结果：</div>
+              <div class="small text-muted mt-1">
+                <span id="detectedDateSource">来源：未知</span><br>
+                <span id="detectedDateValue">识别日期：未识别</span>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-outline-info" id="editDetectedDateBtn">✏️ 修改日期</button>
+          </div>
+          <!-- 日期修改输入框（默认隐藏）-->
+          <div id="detectedDateEdit" class="mt-3 d-none">
+            <div class="input-group">
+              <span class="input-group-text">手动设置日期：</span>
+              <input type="date" class="form-control" id="detectedDateInput">
+              <button class="btn btn-sm btn-success" id="confirmDetectedDateBtn">✅ 确认</button>
+              <button class="btn btn-sm btn-outline-secondary" id="cancelDetectedDateBtn">❌ 取消</button>
+            </div>
+          </div>
+        </div>
+        
         <div class="row g-3">
             <div class="col-md-4">
               <label for="timeRangeStart" class="form-label fw-medium">开始值：</label>
@@ -277,8 +300,6 @@
               </div>
             </div>
           </div>
-          
-
           
           <div class="mt-3 text-muted small">
             <i class="bi bi-info-circle"></i> 选择X轴范围后，图表将只显示该范围内的数据（时间类型X轴使用日期时间选择器）<br>
