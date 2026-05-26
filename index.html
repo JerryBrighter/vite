@@ -6,12 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSV文件可视化分析工具 | DemDec & DemControl</title>
   <!-- 版本信息 -->
-  <meta name="version" content="1.5.0">
+  <meta name="version" content="1.7.0">
   <!-- 引入外部资源 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/cpexcel.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- 引入本地样式 -->
   <link rel="stylesheet" href="./src/style.css">
 
@@ -54,6 +55,44 @@
             <span>✅ 已加载</span>
           </div>
           
+          <!-- 手动选择编码选项 -->
+          <div class="manual-encoding-option mt-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="manualEncoding">
+              <label class="form-check-label" for="manualEncoding">
+                🔤 手动选择编码（自动检测失败时使用）
+              </label>
+            </div>
+            <div class="form-text text-muted small">
+              勾选后将显示编码选择器，允许手动选择文件编码
+            </div>
+            
+            <!-- 编码选择器 -->
+            <div class="encoding-selector d-none" id="encodingSelector">
+              <div class="mt-2 p-3 bg-light rounded border border-light">
+                <label class="form-label fw-bold mb-2">🔤 文件编码选择（解决乱码）：</label>
+                <select class="form-select mb-2" id="dataFileEncoding">
+                  <option value="auto">自动识别（推荐）</option>
+                  <option value="gb2312">GB2312 (简体中文)</option>
+                  <option value="gbk">GBK (扩展中文)</option>
+                  <option value="utf8">UTF-8</option>
+                  <option value="utf8bom">UTF-8 with BOM</option>
+                  <option value="gb18030">GB18030 (全面中文支持)</option>
+                </select>
+                
+                <!-- 编码检测结果显示区域 -->
+                <div id="dataEncodingResult" class="encoding-result d-none"></div>
+                
+                <div class="encoding-preview" id="encodingPreview">
+                  选择编码后将显示文件内容预览...
+                </div>
+                <button class="btn btn-sm btn-primary mt-2" id="confirmEncodingBtn">
+                  ✅ 确认编码并解析文件
+                </button>
+              </div>
+            </div>
+          </div>
+          
           <!-- Excel工作表选择下拉列表 -->
           <div id="sheetSelector" class="d-none mt-3">
             <label class="form-label fw-bold mb-2">📋 选择工作表：</label>
@@ -65,57 +104,16 @@
             </button>
           </div>
           
-          <!-- 高级选项 -->
-          <div class="advanced-options mt-3 d-flex flex-wrap gap-4">
-            <!-- 全0列处理选项 -->
-            <div class="zero-column-option flex-1 min-w-[250px]">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="filterZeroColumns">
-                <label class="form-check-label" for="filterZeroColumns">
-                  📊 自动过滤全0列数据
-                </label>
-              </div>
-              <div class="form-text text-muted small">
-                勾选后将自动过滤掉所有值为0的列，使数据更加简洁
-              </div>
+          <!-- 全0列处理选项 -->
+          <div class="zero-column-option mt-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="filterZeroColumns">
+              <label class="form-check-label" for="filterZeroColumns">
+                📊 自动过滤全0列数据
+              </label>
             </div>
-            
-            <!-- 手动选择编码选项 -->
-            <div class="manual-encoding-option flex-1 min-w-[250px]">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="manualEncoding">
-                <label class="form-check-label" for="manualEncoding">
-                  🔤 手动选择编码（自动检测失败时使用）
-                </label>
-              </div>
-              <div class="form-text text-muted small">
-                勾选后将显示编码选择器，允许手动选择文件编码
-              </div>
-              
-              <!-- 编码选择器 -->
-              <div class="encoding-selector d-none" id="encodingSelector">
-                <div class="mt-2 p-3 bg-light rounded border border-light">
-                  <label class="form-label fw-bold mb-2">🔤 文件编码选择（解决乱码）：</label>
-                  <select class="form-select mb-2" id="dataFileEncoding">
-                    <option value="auto">自动识别（推荐）</option>
-                    <option value="gb2312">GB2312 (简体中文)</option>
-                    <option value="gbk">GBK (扩展中文)</option>
-                    <option value="utf8">UTF-8</option>
-                    <option value="utf8bom">UTF-8 with BOM</option>
-                    <option value="gb18030">GB18030 (全面中文支持)</option>
-                  </select>
-                  
-                  <!-- 编码检测结果显示区域 -->
-                  <div id="dataEncodingResult" class="encoding-result d-none"></div>
-                  
-                  <div class="encoding-preview" id="encodingPreview">
-                    选择编码后将显示文件内容预览...
-                  </div>
-                  <button class="btn btn-sm btn-primary mt-2" id="confirmEncodingBtn">
-                    ✅ 确认编码并解析文件
-                  </button>
-                </div>
-              </div>
+            <div class="form-text text-muted small">
+              勾选后将自动过滤掉所有值为0的列，使数据更加简洁
             </div>
           </div>
           
@@ -149,37 +147,46 @@
             <span>✅ 已加载</span>
           </div>
           
-          <!-- Control文件编码选择器 -->
-          <div class="encoding-selector d-none" id="controlEncodingSelector">
-            <label class="form-label fw-bold mb-2">🔤 文件编码选择（解决乱码）：</label>
-            <select class="form-select mb-2" id="controlFileEncoding">
-              <option value="auto">自动识别（推荐）</option>
-              <option value="gb2312">GB2312 (简体中文)</option>
-              <option value="gbk">GBK (扩展中文)</option>
-              <option value="utf8">UTF-8</option>
-              <option value="utf8bom">UTF-8 with BOM</option>
-              <option value="gb18030">GB18030 (全面中文支持)</option>
-            </select>
-            
-            <!-- 编码检测结果显示区域 -->
-            <div id="controlEncodingResult" class="encoding-result d-none"></div>
-            
-            <div class="encoding-preview" id="controlEncodingPreview">
-              选择编码后将显示文件内容预览...
+          <!-- 控制文件手动选择编码选项 -->
+          <div class="manual-encoding-option mt-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="manualControlEncoding">
+              <label class="form-check-label" for="manualControlEncoding">
+                🔤 手动选择编码（自动检测失败时使用）
+              </label>
             </div>
-            <button class="btn btn-sm btn-primary mt-2" id="confirmControlEncodingBtn">
-              ✅ 确认编码并解析文件
-            </button>
-          </div>
-          
-          <div class="help-text">
-            ✨ 时间列每一行可作为筛选起点<br>
-            ⏰ 选择后筛选【所选时间+15分钟】范围数据<br>
-            📊 支持CSV、DAT、TXT和Excel格式
+            <div class="form-text text-muted small">
+              勾选后将显示编码选择器，允许手动选择文件编码
+            </div>
+            
+            <!-- Control文件编码选择器 -->
+            <div class="encoding-selector d-none" id="controlEncodingSelector">
+              <div class="mt-2 p-3 bg-light rounded border border-light">
+                <label class="form-label fw-bold mb-2">🔤 文件编码选择（解决乱码）：</label>
+                <select class="form-select mb-2" id="controlFileEncoding">
+                  <option value="auto">自动识别（推荐）</option>
+                  <option value="gb2312">GB2312 (简体中文)</option>
+                  <option value="gbk">GBK (扩展中文)</option>
+                  <option value="utf8">UTF-8</option>
+                  <option value="utf8bom">UTF-8 with BOM</option>
+                  <option value="gb18030">GB18030 (全面中文支持)</option>
+                </select>
+                
+                <!-- 编码检测结果显示区域 -->
+                <div id="controlEncodingResult" class="encoding-result d-none"></div>
+                
+                <div class="encoding-preview" id="controlEncodingPreview">
+                  选择编码后将显示文件内容预览...
+                </div>
+                <button class="btn btn-sm btn-primary mt-2" id="confirmControlEncodingBtn">
+                  ✅ 确认编码并解析文件
+                </button>
+              </div>
+            </div>
           </div>
           
           <!-- 时间选择下拉框 -->
-          <div id="timeSelectorContainer" class="d-none time-select-dropdown">
+          <div id="timeSelectorContainer" class="d-none time-select-dropdown mt-3">
             <label class="form-label fw-bold mb-2">📌 选择筛选起始时间：</label>
             <select class="form-select" id="timeSelectorSelect">
               <!-- 动态加载DemControl文件中的时间选项 -->
@@ -187,6 +194,12 @@
             <button class="btn btn-secondary w-100 mt-3" id="filterByControlBtn" disabled>
               🎯 按所选时间筛选数据
             </button>
+          </div>
+          
+          <div class="help-text">
+            ✨ 时间列每一行可作为筛选起点<br>
+            ⏰ 选择后筛选【所选时间+15分钟】范围数据<br>
+            📊 支持CSV、DAT、TXT和Excel格式
           </div>
         </div>
       </div>
@@ -387,9 +400,19 @@
     <!-- 第五部分：数据表格区域 -->
     <div class="table-controls mt-4 mb-2">
       <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <button class="btn btn-sm btn-primary" id="toggleTableBtn">
-          🔽 显示数据表格
-        </button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-primary" id="toggleTableBtn">
+            🔽 显示数据表格
+          </button>
+          <div class="btn-group" role="group">
+            <button type="button" class="btn btn-sm btn-outline-secondary active" id="showRawDataBtn">
+              📋 原始数据
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="showProcessedDataBtn">
+              📊 处理后数据
+            </button>
+          </div>
+        </div>
         <div class="pagination-controls d-none d-flex align-items-center gap-2" id="paginationControls">
           <button class="btn btn-sm btn-outline-secondary" id="prevPageBtn" disabled>
             上一页
@@ -433,13 +456,14 @@
 
   <!-- 版本和修改说明区域 -->
   <div class="version-info mt-5 mb-3 text-center text-muted small">
-    <p>📦 版本：1.5.0 | 更新日期：2026-03-18</p>
+    <p>📦 版本：1.7.0 | 更新日期：2026-04-23</p>
     <p class="mt-1">
       🎉 本次更新内容：<br>
-      • 添加了空格分隔的日期时间数据格式支持（如：2026-03-14 03:59:33 99.451 23.570）<br>
-      • 自动识别日期格式（年-月-日）和时间格式（时:分:秒）<br>
-      • 自动创建默认列标题（时间、列1、列2...）<br>
-      • 改进了文件格式检测逻辑，能够正确区分不同的文件格式
+      • 时间格式规范化：支持多种时间格式（HH:MM:SS、HH:MM:SS.sss、HH:MM:SS:sss）<br>
+      • 日期识别：自动从文件名或文件属性识别日期，并支持手动修改<br>
+      • 图表修复：修复X轴数值排序、图例交互等问题<br>
+      • 整齐坐标轴：使X轴和Y轴每个像素点显示相同标尺数值<br>
+      • 去掉连线：支持只显示数据点，不显示连线
     </p>
   </div>
 

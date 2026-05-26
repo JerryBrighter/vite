@@ -5,8 +5,8 @@
  * Excel文件处理、数据解析和表格更新等功能。
  */
 
-import { elements, originalData, filteredData, headers, controlData, currentPage, itemsPerPage, detectedDate, detectedDateSource, updateVariables } from './config.js';
-import { parseCSVContent, updateStatus, parseTime, formatDateTime, parseDateFromFileName, detectEncoding, decodeData } from './utils.js';
+import { elements, rawData, rawHeaders, originalData, filteredData, headers, controlData, currentPage, itemsPerPage, tableDisplayMode, detectedDate, detectedDateSource, updateVariables } from './config.js';
+import { parseCSVContent, updateStatus, parseTime, formatDateTime, parseDateFromFileName, detectEncoding, decodeData, mergeExcelSheets } from './utils.js';
 import { initXAxisSlider } from './chartHandler.js';
 
 /**
@@ -122,13 +122,104 @@ function handleExcelFile(file) {
   const reader = new FileReader();
   reader.onload = function(e) {
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
+    updateStatus(`📊 开始读取Excel文件：${file.name}`);
     
-    // 显示工作表选择器
+    // 尝试多种配置解析，选择最佳结果（与测试页面一致）
+    const configs = [
+      { name: '标准配置', options: { type: 'array', cellStyles: true, cellText: true, cellDates: true, raw: false } },
+      { name: 'GBK编码', options: { type: 'array', codepage: 936, cellStyles: true, cellText: true, cellDates: true, raw: false } },
+      { name: 'UTF-8编码', options: { type: 'array', codepage: 65001, cellStyles: true, cellText: true, cellDates: true, raw: false } },
+      { name: 'Raw模式', options: { type: 'array', raw: true } }
+    ];
+    
+    let bestWorkbook = null;
+    let bestConfigName = '';
+    let bestFirstHeader = '';
+    
+    for (const config of configs) {
+      try {
+        const workbook = XLSX.read(data, config.options);
+        
+        if (workbook.SheetNames.length > 0) {
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const firstData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false });
+          
+          if (firstData.length > 0 && firstData[0].length > 0) {
+            const firstHeader = String(firstData[0][0]).trim();
+            const hasGarbledChars = /[\ufffd\x00-\x1f\x7f-\x9f]/.test(firstHeader);
+            
+            if (!hasGarbledChars) {
+              bestWorkbook = workbook;
+              bestConfigName = config.name;
+              bestFirstHeader = firstHeader;
+              updateStatus(`✅ 使用${config.name}解析成功，表头首列: "${firstHeader}"`);
+              break;
+            }
+            
+            if (!bestWorkbook) {
+              bestWorkbook = workbook;
+              bestConfigName = config.name;
+              bestFirstHeader = firstHeader;
+            }
+          }
+        }
+      } catch (error) {
+        updateStatus(`⚠️ ${config.name}解析失败: ${error.message}`);
+      }
+    }
+    
+    if (!bestWorkbook) {
+      updateStatus('❌ Excel文件解析失败');
+      return;
+    }
+    
+    updateStatus(`📊 读取完成，使用${bestConfigName}，包含${bestWorkbook.SheetNames.length}个工作表: ${bestWorkbook.SheetNames.join(', ')}`);
+    
+    // 检测是否为特殊格式的多Sheet文件
+    const isMultiSheetFormat = detectMultiSheetFormat(bestWorkbook);
+    
+    if (isMultiSheetFormat && bestWorkbook.SheetNames.length > 1) {
+      updateStatus(`🔍 检测到特殊多Sheet格式，开始自动合并...`);
+      // 自动合并多Sheet数据
+      const sheetsData = [];
+      bestWorkbook.SheetNames.forEach((sheetName, index) => {
+        const worksheet = bestWorkbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+          header: 1,
+          raw: false,
+          dateNF: 'yyyy-mm-dd hh:mm:ss',
+          defval: ''
+        });
+        // 输出调试信息
+        if (jsonData.length > 0 && jsonData[0].length > 0) {
+          const firstRowSample = jsonData[0].slice(0, Math.min(5, jsonData[0].length)).map(h => {
+            const str = String(h);
+            return str.length > 20 ? str.substring(0, 20) + '...' : str;
+          }).join(', ');
+          updateStatus(`📋 Sheet ${index + 1}: ${sheetName}，行数:${jsonData.length}，列数:${jsonData[0].length}`);
+          updateStatus(`   表头示例: ${firstRowSample}`);
+        }
+        // 使用对象格式，包含name和data属性
+        sheetsData.push({ name: sheetName, data: jsonData });
+      });
+      
+      const result = mergeExcelSheets(sheetsData);
+      if (result.mergedData.length > 0) {
+        updateStatus(`✅ ${result.info}`);
+        const mergedHeadersSample = result.mergedData[0].slice(0, Math.min(5, result.mergedData[0].length)).join(', ');
+        updateStatus(`📝 合并后表头: ${mergedHeadersSample}...`);
+        processDataFile(result.mergedData, 'xlsx');
+        return;
+      } else {
+        updateStatus(`⚠️ 多Sheet合并失败，切换到手动选择模式`);
+      }
+    }
+    
+    // 显示工作表选择器（单Sheet或合并失败时）
     elements.sheetSelector.classList.remove('d-none');
     elements.sheetSelect.innerHTML = '';
     
-    workbook.SheetNames.forEach(sheetName => {
+    bestWorkbook.SheetNames.forEach(sheetName => {
       const option = document.createElement('option');
       option.value = sheetName;
       option.textContent = sheetName;
@@ -136,6 +227,39 @@ function handleExcelFile(file) {
     });
   };
   reader.readAsArrayBuffer(file);
+}
+
+/**
+ * 检测Excel文件是否为特殊多Sheet格式
+ * 判断依据：每个Sheet都包含"时间"和"值"列
+ * @param {Object} workbook - XLSX工作簿对象
+ * @returns {boolean} 是否为特殊多Sheet格式
+ */
+function detectMultiSheetFormat(workbook) {
+  if (!workbook || workbook.SheetNames.length < 2) {
+    return false;
+  }
+  
+  const requiredColumns = ['时间', '值'];
+  
+  // 检查第一个Sheet的结构
+  const firstSheetName = workbook.SheetNames[0];
+  const firstSheet = workbook.Sheets[firstSheetName];
+  const firstSheetData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+  
+  if (!firstSheetData || firstSheetData.length < 2) {
+    return false;
+  }
+  
+  // 获取表头行
+  const headers = firstSheetData[0];
+  if (!headers || headers.length < 2) {
+    return false;
+  }
+  
+  // 检查是否包含所有必需的列
+  const headerSet = new Set(headers.map(h => String(h).trim()));
+  return requiredColumns.every(col => headerSet.has(col));
 }
 
 /**
@@ -152,11 +276,40 @@ function confirmSheetSelection() {
   const reader = new FileReader();
   reader.onload = function(e) {
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
+    // 添加完整的编码支持配置
+    const workbook = XLSX.read(data, { 
+      type: 'array',
+      codepage: 936, // GBK编码，用于处理中文
+      cellStyles: true,
+      cellText: true,
+      cellDates: true,
+      raw: false
+    });
     const worksheet = workbook.Sheets[selectedSheet];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+      header: 1,
+      raw: false,
+      dateNF: 'yyyy-mm-dd hh:mm:ss',
+      defval: ''
+    });
     
-    processDataFile(jsonData);
+    if (jsonData.length > 0 && jsonData[0].length > 0) {
+      const firstRowSample = jsonData[0].slice(0, Math.min(5, jsonData[0].length)).join(', ');
+      updateStatus(`📋 选择Sheet: ${selectedSheet}，行数:${jsonData.length}，表头: ${firstRowSample}...`);
+    }
+    
+    // 检查第一列是否为时间列
+    // 如果第一行第一列不是"时间"，但数据行第一列是时间格式，则第一行是表头
+    if (jsonData.length >= 2 && jsonData[0][0] !== '时间') {
+      const firstCellOfData = String(jsonData[1][0]).trim();
+      const parsedTime = parseTime(firstCellOfData);
+      if (!isNaN(parsedTime)) {
+        // 第一行是表头，将第一列标题改为"时间"
+        jsonData[0][0] = '时间';
+      }
+    }
+    
+    processDataFile(jsonData, 'xlsx');
     elements.sheetSelector.classList.add('d-none');
   };
   reader.readAsArrayBuffer(file);
@@ -179,8 +332,17 @@ function handleControlFileUpload(e) {
   if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
     handleControlExcelFile(file);
   } else {
-    // 自动检测编码并直接解析，不需要人工确认
-    autoDetectAndProcessControlFile(file);
+    // 检查是否需要手动选择编码（使用控制文件独立的手动编码复选框）
+    const isManualEncoding = elements.manualControlEncoding && elements.manualControlEncoding.checked;
+    
+    if (isManualEncoding) {
+      // 显示编码选择器，让用户手动选择编码
+      elements.controlEncodingSelector.classList.remove('d-none');
+      updateControlEncodingPreview();
+    } else {
+      // 自动检测编码并处理
+      autoDetectAndProcessControlFile(file);
+    }
   }
 }
 
@@ -199,6 +361,12 @@ function autoDetectAndProcessControlFile(file) {
       const lines = content.split('\n').filter(line => line.trim() !== '');
       const parsedData = parseCSVContent(lines);
       processControlFile(parsedData, detectedEncoding);
+      
+      // 自动检测成功后，只在用户勾选了手动选择编码时更新预览
+      const isManualEncoding = elements.manualControlEncoding && elements.manualControlEncoding.checked;
+      if (isManualEncoding) {
+        updateControlEncodingPreview();
+      }
     } catch (error) {
       // 解码失败时显示编码选择器，让用户手动选择
       elements.controlEncodingSelector.classList.remove('d-none');
@@ -207,10 +375,6 @@ function autoDetectAndProcessControlFile(file) {
     }
   };
   reader.readAsArrayBuffer(file);
-  
-  // 始终显示编码选择器，供用户修改编码
-  elements.controlEncodingSelector.classList.remove('d-none');
-  updateControlEncodingPreview();
 }
 
 /**
@@ -223,12 +387,25 @@ function handleControlExcelFile(file) {
   const reader = new FileReader();
   reader.onload = function(e) {
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
+    // 添加完整的编码支持配置
+    const workbook = XLSX.read(data, { 
+      type: 'array',
+      codepage: 936, // GBK编码，用于处理中文
+      cellStyles: true,
+      cellText: true,
+      cellDates: true,
+      raw: false
+    });
     const firstSheet = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheet];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+      header: 1,
+      raw: false,
+      dateNF: 'yyyy-mm-dd hh:mm:ss',
+      defval: ''
+    });
     
-    processControlFile(jsonData);
+    processControlFile(jsonData, 'xlsx');
   };
   reader.readAsArrayBuffer(file);
 }
@@ -274,18 +451,8 @@ function updateEncodingPreview() {
         elements.dataEncodingResult.textContent = `自动检测结果：${encodingNames[detectedEncoding] || detectedEncoding.toUpperCase()}`;
         elements.dataEncodingResult.classList.remove('d-none');
         
-        // 检查预览内容是否有乱码
-        const hasGarbledChars = /[\ufffd\x00-\x1f\x7f-\x9f]/.test(previewContent);
-        
-        // 只有当用户没有勾选"手动选择编码"时，才自动确认编码
-        const isManualEncoding = elements.manualEncoding && elements.manualEncoding.checked;
-        if (!isManualEncoding) {
-          // 自动确认编码，无论是否有乱码
-          // 用户要求：识别编码后，自动应用编码结果，不需要手动点击按钮
-          setTimeout(() => {
-            confirmDataEncoding();
-          }, 300); // 延迟一下，让用户看到检测结果
-        }
+        // 只显示编码检测结果，不自动确认
+        // 文件已经在 autoDetectAndProcessDataFile 中处理过了
       } else {
         elements.dataEncodingResult.classList.add('d-none');
       }
@@ -381,14 +548,8 @@ function updateControlEncodingPreview() {
         elements.controlEncodingResult.textContent = `自动检测结果：${encodingNames[detectedEncoding] || detectedEncoding.toUpperCase()}`;
         elements.controlEncodingResult.classList.remove('d-none');
         
-        // 检查预览内容是否有乱码
-        const hasGarbledChars = /[\ufffd\x00-\x1f\x7f-\x9f]/.test(previewContent);
-        
-        // 自动确认编码，无论是否有乱码
-        // 用户要求：识别编码后，自动应用编码结果，不需要手动点击按钮
-        setTimeout(() => {
-          confirmControlEncoding();
-        }, 300); // 延迟一下，让用户看到检测结果
+        // 只显示编码检测结果，不自动确认
+        // 文件已经在 autoDetectAndProcessControlFile 中处理过了
       } else {
         elements.controlEncodingResult.classList.add('d-none');
       }
@@ -430,8 +591,11 @@ function confirmControlEncoding() {
       const parsedData = parseCSVContent(lines);
       processControlFile(parsedData, finalEncoding);
       
-      // 编码确认后，隐藏编码选择器
-      elements.controlEncodingSelector.classList.add('d-none');
+      // 只有当用户没有勾选"手动选择编码"时，才隐藏编码选择器
+      const isManualEncoding = elements.manualControlEncoding && elements.manualControlEncoding.checked;
+      if (!isManualEncoding) {
+        elements.controlEncodingSelector.classList.add('d-none');
+      }
     } catch (error) {
       elements.controlEncodingResult.textContent = '编码解析失败，请尝试其他编码';
       elements.controlEncodingResult.classList.remove('d-none');
@@ -443,7 +607,7 @@ function confirmControlEncoding() {
 
 /**
  * 处理数据文件
- * @param {Array<Array<string>>} data - 解析后的数据
+ * @param {Array<Array<string>>} data - 解析后的数据（已由parseCSVContent标准化）
  * @param {string} encoding - 检测到的编码
  * @example
  * processDataFile(parsedData, 'gb2312');
@@ -451,115 +615,87 @@ function confirmControlEncoding() {
 function processDataFile(data, encoding) {
   if (data.length === 0) return;
   
+  // 保存原始数据（未处理的格式）
+  const savedRawHeaders = data.length > 0 ? [...data[0]] : [];
+  const savedRawData = data.slice(1).map(row => [...row]);
+  
   let newHeaders;
   let newOriginalData;
-  let headerRows = 0;
   
-  // 检查是否已经有标题行（第一行是否包含"时间"列）
-  if (data[0] && data[0][0] === '时间') {
-    // 已经有标题行
+  // 判断是否为Excel文件
+  const isExcel = encoding === 'xlsx';
+  
+  // 检查是否已经有标题行
+  // 判断依据：第一行第一列是否为'时间'，或者第二行第一列是否为时间格式，或者是Excel文件
+  const hasHeader = data[0] && data[0][0] === '时间';
+  
+  if (hasHeader) {
+    // parseCSVContent已经处理好标题行
     newHeaders = data[0];
-    headerRows = 1;
-    // 提取数据行
-    newOriginalData = [];
-    for (let i = 1; i < data.length; i++) {
-      if (data[i].length > 0) {
-        newOriginalData.push(data[i]);
+    newOriginalData = data.slice(1).filter(row => row.length > 0);
+  } else if (isExcel) {
+    // Excel文件强制认为第一行是标题行
+    newHeaders = data[0].map((cell, index) => {
+      const cellStr = String(cell).trim();
+      if (index === 0) {
+        return cellStr || '时间';
       }
-    }
+      return cellStr || `列${index}`;
+    });
+    newOriginalData = data.slice(1).filter(row => row.length > 0);
   } else {
-    // 检测前几行是否包含时间数据，避免将数据行错误识别为标题行
-    let actualHeaderRows = 0;
-    const maxHeaderRows = Math.min(3, data.length);
+    // 检查第二行第一列是否为时间格式（用于判断第一行是否为表头）
+    const hasDataHeader = data.length >= 2 && data[1] && data[1][0];
+    const firstDataCell = hasDataHeader ? String(data[1][0]).trim() : '';
+    const isTimeFormat = !isNaN(parseTime(firstDataCell));
     
-    // 检查前maxHeaderRows行，判断是否可能是标题行
-    for (let j = 0; j < maxHeaderRows; j++) {
-      if (data[j] && data[j].length > 0) {
-        // 检查第一列是否是时间格式
-        const firstCell = data[j][0].trim();
-        const parsedTime = parseTime(firstCell);
-        
-        // 如果第一列是时间格式，那么这行不是标题行
-        if (!isNaN(parsedTime)) {
-          break;
+    if (isTimeFormat) {
+      // 第一行是表头，第二行开始是数据
+      newHeaders = data[0].map((cell, index) => {
+        const cellStr = String(cell).trim();
+        if (index === 0) {
+          return cellStr || '时间';
         }
-        
-        // 检查其他列是否包含数字（如果大部分是数字，可能是数据行）
-        let numericCount = 0;
-        for (let k = 1; k < data[j].length; k++) {
-          const cell = data[j][k].trim();
-          if (!isNaN(Number(cell)) && cell !== '') {
-            numericCount++;
-          }
-        }
-        
-        // 如果超过50%的列是数字，可能是数据行
-        if (numericCount > data[j].length / 2) {
-          break;
-        }
-        
-        actualHeaderRows++;
-      }
-    }
-    
-    // 如果没有检测到标题行，创建默认标题行
-    newHeaders = [];
-    if (actualHeaderRows > 0) {
-      // 合并标题行
-      for (let i = 0; i < data[0].length; i++) {
-        const headerParts = [];
-        for (let j = 0; j < actualHeaderRows; j++) {
-          if (data[j] && data[j][i]) {
-            const trimmedPart = data[j][i].trim().replace(/\s+/g, '');
-            if (trimmedPart) {
-              headerParts.push(trimmedPart);
-            }
-          }
-        }
-        newHeaders.push(headerParts.join('') || `Column ${i + 1}`);
-      }
+        return cellStr || `列${index}`;
+      });
+      newOriginalData = data.slice(1).filter(row => row.length > 0);
     } else {
-      // 没有标题行，创建默认标题
-      for (let i = 0; i < data[0].length; i++) {
+      // 普通CSV格式，没有标题行，需要创建默认标题
+      newHeaders = [];
+      const firstRowLength = data[0] ? data[0].length : 0;
+      for (let i = 0; i < firstRowLength; i++) {
         if (i === 0) {
           newHeaders.push('时间');
         } else {
-          newHeaders.push(`Column ${i + 1}`);
+          newHeaders.push(`列${i}`);
         }
       }
-    }
-    
-    // 设置实际的标题行数
-    headerRows = actualHeaderRows;
-    
-    // 提取数据行
-    newOriginalData = [];
-    for (let i = headerRows; i < data.length; i++) {
-      if (data[i] && data[i].length > 0) {
-        newOriginalData.push(data[i]);
-      }
+      // 所有行都是数据行
+      newOriginalData = data.filter(row => row.length > 0);
     }
   }
   
   // 过滤空列（包含空数据的列）
   let dataAfterEmptyFilter;
   const nonEmptyColumns = filterEmptyColumns(newOriginalData, newHeaders);
-  newHeaders = nonEmptyColumns.headers;
+  const filteredHeaders = nonEmptyColumns.headers;
   dataAfterEmptyFilter = nonEmptyColumns.data;
   
   // 过滤全0列
   let newFilteredData;
   if (elements.filterZeroColumns.checked) {
-    newFilteredData = filterZeroColumns(dataAfterEmptyFilter, newHeaders);
+    newFilteredData = filterZeroColumns(dataAfterEmptyFilter, filteredHeaders);
   } else {
     newFilteredData = [...dataAfterEmptyFilter];
   }
   
   // 更新全局变量
   updateVariables({
+    rawData: savedRawData,
+    rawHeaders: savedRawHeaders,
     originalData: newOriginalData,
     filteredData: newFilteredData,
-    headers: newHeaders
+    headers: filteredHeaders
   });
   
   // 报告解析结果
@@ -573,7 +709,10 @@ function processDataFile(data, encoding) {
   const encodingName = encodingNames[encoding] || encoding.toUpperCase();
   
   updateUIAfterDataLoad();
-  updateStatus(`✅ 数据文件加载成功！编码：${encodingName}，总行数：${data.length}，数据行数：${newOriginalData.length}，标题行数：${headerRows}`);
+  updateStatus(`✅ 数据文件加载成功！编码：${encodingName}，总行数：${data.length}，数据行数：${newOriginalData.length}`);
+  
+  // 自动设置时间范围（仅在初始加载时调用）
+  autoTimeRange();
   
   // 自动检测成功后，不显示编码选择器
   // 但为了让用户知道检测结果，我们更新预览但不显示选择器
@@ -711,9 +850,12 @@ function processControlFile(data, encoding) {
   updateTimeSelector();
   updateStatus(`✅ 控制文件加载成功！编码：${encodingName}，总行数：${data.length}，提取时间点数：${newControlData.length}`);
   
-  // 显示编码选择器，以便用户可以在需要时手动选择编码
-  elements.controlEncodingSelector.classList.remove('d-none');
-  updateControlEncodingPreview();
+  // 只在用户勾选了手动选择编码时才显示编码选择器
+  const isManualEncoding = elements.manualControlEncoding && elements.manualControlEncoding.checked;
+  if (isManualEncoding) {
+    elements.controlEncodingSelector.classList.remove('d-none');
+    updateControlEncodingPreview();
+  }
 }
 
 /**
@@ -724,7 +866,6 @@ function processControlFile(data, encoding) {
 function updateTimeSelector() {
   elements.timeSelectorSelect.innerHTML = '';
   if (controlData && controlData.length > 0) {
-    let firstValidTime = null;
     controlData.forEach((time, index) => {
       // 只添加时间值，不添加标题行的"时间"字样
       if (time && time.trim() !== '时间' && time.trim() !== 'Time') {
@@ -732,19 +873,8 @@ function updateTimeSelector() {
         option.value = time;
         option.textContent = time;
         elements.timeSelectorSelect.appendChild(option);
-        // 记录第一个有效时间
-        if (!firstValidTime) {
-          firstValidTime = time;
-        }
       }
     });
-    // 自动选择第一个有效时间
-    if (firstValidTime) {
-      elements.timeSelectorSelect.value = firstValidTime;
-      // 触发时间选择变化事件，更新X轴范围控件
-      const event = new Event('change');
-      elements.timeSelectorSelect.dispatchEvent(event);
-    }
   }
   elements.timeSelectorContainer.classList.remove('d-none');
   elements.filterByControlBtn.disabled = false;
@@ -773,9 +903,6 @@ function updateUIAfterDataLoad() {
   elements.selectAllYAxis2Btn.disabled = false;
   elements.timeRangeSelector.classList.remove('d-none');
   elements.equalAxisBtn.classList.remove('d-none');
-  
-  // 自动设置时间范围
-  autoTimeRange();
   
   // 初始化X轴滑块
   initXAxisSlider();
@@ -847,7 +974,11 @@ function updateAxisSelectors() {
  * updateTable();
  */
 function updateTable() {
-  if (filteredData.length === 0) {
+  // 根据显示模式选择数据
+  const displayHeaders = tableDisplayMode === 'raw' ? rawHeaders : headers;
+  const displayData = tableDisplayMode === 'raw' ? rawData : filteredData;
+  
+  if (displayData.length === 0) {
     elements.tableHeader.innerHTML = '<tr><th colspan="100%" class="text-center text-muted">📄 暂无表格数据</th></tr>';
     elements.tableBody.innerHTML = '';
     return;
@@ -855,7 +986,7 @@ function updateTable() {
   
   // 更新表头
   let headerHTML = '<tr>';
-  headers.forEach((header, index) => {
+  displayHeaders.forEach((header, index) => {
     // 为时间列设置足够的宽度
     if (index === 0) {
       headerHTML += `<th style="min-width: 200px; white-space: nowrap;">${header}</th>`;
@@ -867,10 +998,10 @@ function updateTable() {
   elements.tableHeader.innerHTML = headerHTML;
   
   // 计算分页
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.ceil(displayData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
-  const pageData = filteredData.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, displayData.length);
+  const pageData = displayData.slice(startIndex, endIndex);
   
   // 更新表格内容
   let bodyHTML = '';

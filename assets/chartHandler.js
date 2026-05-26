@@ -629,8 +629,35 @@ function exportData() {
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      link.setAttribute('download', `DemDec数据_${timestamp}.csv`);
+      
+      // 从数据中提取时间范围来命名文件
+      let fileName = 'DemDec数据';
+      if (filteredData.length > 0) {
+        const firstTime = filteredData[0][0];
+        const lastTime = filteredData[filteredData.length - 1][0];
+        
+        // 解析时间格式
+        const firstParsed = parseTime(firstTime);
+        const lastParsed = parseTime(lastTime);
+        
+        if (!isNaN(firstParsed) && !isNaN(lastParsed)) {
+          // 格式化时间用于文件名
+          const formatTimeForFileName = (date) => {
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            const seconds = String(d.getSeconds()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`;
+          };
+          
+          fileName = `DemDec数据_${formatTimeForFileName(firstParsed)}_至_${formatTimeForFileName(lastParsed)}`;
+        }
+      }
+      
+      link.setAttribute('download', `${fileName}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -673,6 +700,8 @@ function resetData() {
 function clearAll() {
   // 重置所有变量
   updateVariables({
+    rawData: [],
+    rawHeaders: [],
     originalData: [],
     filteredData: [],
     controlData: [],
@@ -682,7 +711,8 @@ function clearAll() {
     yAxis2Indices: [],
     currentChart: null,
     currentPage: 1,
-    selectedControlTime: null
+    selectedControlTime: null,
+    tableDisplayMode: 'processed'
   });
   
   // 重置UI
@@ -1031,8 +1061,11 @@ function addChartLegend(datasets) {
 function initXAxisSlider() {
   if (!elements.sliderHandleMin || !elements.sliderHandleMax) return;
   
+  // 使用过滤后的数据而不是原始数据
+  const data = filteredData.length > 0 ? filteredData : originalData;
+  
   let startIndex = 0;
-  let endIndex = originalData.length - 1;
+  let endIndex = data.length - 1;
   
   // 尝试从时间范围输入框获取当前设置的范围
   const startTime = elements.timeRangeStart.value;
@@ -1044,16 +1077,16 @@ function initXAxisSlider() {
     const endTimestamp = new Date(endTime).getTime();
     
     // 找到对应的索引
-    for (let i = 0; i < originalData.length; i++) {
-      const rowTime = parseTime(originalData[i][xIndex]);
+    for (let i = 0; i < data.length; i++) {
+      const rowTime = parseTime(data[i][xIndex]);
       if (!isNaN(rowTime) && rowTime >= startTimestamp) {
         startIndex = i;
         break;
       }
     }
     
-    for (let i = originalData.length - 1; i >= 0; i--) {
-      const rowTime = parseTime(originalData[i][xIndex]);
+    for (let i = data.length - 1; i >= 0; i--) {
+      const rowTime = parseTime(data[i][xIndex]);
       if (!isNaN(rowTime) && rowTime <= endTimestamp) {
         endIndex = i;
         break;
@@ -1088,9 +1121,11 @@ function updateXAxisSliderPosition(startIndex, endIndex) {
   let startPercent = 0;
   let endPercent = 100;
   
-  const totalLength = originalData.length;
+  // 使用过滤后的数据而不是原始数据
+  const data = filteredData.length > 0 ? filteredData : originalData;
+  const totalLength = data.length;
   if (totalLength > 0) {
-    // 计算基于原始数据范围的百分比
+    // 计算基于过滤后数据范围的百分比
     startPercent = (startIndex / totalLength) * 100;
     endPercent = (endIndex / totalLength) * 100;
   }
@@ -1308,9 +1343,10 @@ function updateXAxisSliderLabels(startIndex, endIndex) {
     elements.sliderValueMin.textContent = startTime;
     elements.sliderValueMax.textContent = endTime;
   } else {
-    // 如果时间输入框没有值，从原始数据中获取
-    elements.sliderValueMin.textContent = originalData[startIndex]?.[0] || '开始';
-    elements.sliderValueMax.textContent = originalData[endIndex]?.[0] || '结束';
+    // 如果时间输入框没有值，从过滤后的数据中获取
+    const data = filteredData.length > 0 ? filteredData : originalData;
+    elements.sliderValueMin.textContent = data[startIndex]?.[0] || '开始';
+    elements.sliderValueMax.textContent = data[endIndex]?.[0] || '结束';
   }
   
   // 更新标签位置

@@ -7,7 +7,19 @@
 
 // 全局数据变量
 /**
- * 原始数据 - 从文件加载的完整数据
+ * 原始数据（未处理）- 从文件加载的完整数据，保持原始格式
+ * @type {Array<Array<string>>}
+ */
+let rawData = [];
+
+/**
+ * 原始表头（未处理）- 原始数据的表头，保持原始格式
+ * @type {Array<string>}
+ */
+let rawHeaders = [];
+
+/**
+ * 处理后的数据 - 经过格式识别和标准化处理后的数据
  * @type {Array<Array<string>>}
  */
 let originalData = [];
@@ -105,6 +117,12 @@ let detectedDate = null;
  */
 let detectedDateSource = '未知';
 
+/**
+ * 表格显示模式 - 'raw'显示原始数据, 'processed'显示处理后数据
+ * @type {'raw' | 'processed'}
+ */
+let tableDisplayMode = 'processed';
+
 // 使用getter函数来获取状态值
 export function getToggleLineEnabled() {
   return toggleLineEnabled;
@@ -180,6 +198,8 @@ const elements = {
   
   // 表格元素
   toggleTableBtn: document.getElementById('toggleTableBtn'),           // 切换表格显示按钮
+  showRawDataBtn: document.getElementById('showRawDataBtn'),           // 显示原始数据按钮
+  showProcessedDataBtn: document.getElementById('showProcessedDataBtn'), // 显示处理后数据按钮
   paginationControls: document.getElementById('paginationControls'),   // 分页控制容器
   prevPageBtn: document.getElementById('prevPageBtn'),                 // 上一页按钮
   nextPageBtn: document.getElementById('nextPageBtn'),                 // 下一页按钮
@@ -198,7 +218,8 @@ const elements = {
   
   // 其他元素
   filterZeroColumns: document.getElementById('filterZeroColumns'),     // 过滤全0列复选框
-  manualEncoding: document.getElementById('manualEncoding'),           // 手动选择编码复选框
+  manualEncoding: document.getElementById('manualEncoding'),           // 数据文件手动选择编码复选框
+  manualControlEncoding: document.getElementById('manualControlEncoding'), // 控制文件手动选择编码复选框
   
   // X轴滑块元素
   xAxisSliderContainer: document.getElementById('xAxisSliderContainer'), // X轴滑块容器
@@ -220,6 +241,8 @@ const elements = {
 
 // 导出配置
 export { 
+  rawData,
+  rawHeaders,
   originalData, 
   filteredData, 
   controlData, 
@@ -237,6 +260,7 @@ export {
   currentFileDate,
   detectedDate,
   detectedDateSource,
+  tableDisplayMode,
   elements
 };
 
@@ -247,6 +271,8 @@ export {
  * updateVariables({ filteredData: newData, currentPage: 1 });
  */
 export function updateVariables(newValues) {
+  if (newValues.rawData !== undefined) rawData = newValues.rawData;
+  if (newValues.rawHeaders !== undefined) rawHeaders = newValues.rawHeaders;
   if (newValues.originalData !== undefined) originalData = newValues.originalData;
   if (newValues.filteredData !== undefined) filteredData = newValues.filteredData;
   if (newValues.controlData !== undefined) controlData = newValues.controlData;
@@ -264,4 +290,5 @@ export function updateVariables(newValues) {
   if (newValues.currentFileDate !== undefined) currentFileDate = newValues.currentFileDate;
   if (newValues.detectedDate !== undefined) detectedDate = newValues.detectedDate;
   if (newValues.detectedDateSource !== undefined) detectedDateSource = newValues.detectedDateSource;
+  if (newValues.tableDisplayMode !== undefined) tableDisplayMode = newValues.tableDisplayMode;
 }

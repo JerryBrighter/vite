@@ -301,7 +301,8 @@ function parseCSVContent(lines) {
         if (cells1[i]) parts.push(cells1[i]);
         if (cells2[i]) parts.push(cells2[i]);
         if (cells3[i]) parts.push(cells3[i]);
-        headerRow.push(parts.join(' ') || `列${i + 1}`);
+        const mergedHeader = parts.join('') || `列${i + 1}`;
+        headerRow.push(mergedHeader);
       }
       // 第一列设置为'时间'
       headerRow[0] = '时间';
@@ -632,6 +633,131 @@ function decodeGB2312Fallback(buffer) {
   return text;
 }
 
+/**
+ * 合并Excel多Sheet数据
+ * 处理特殊格式的Excel文件，每个Sheet结构相同：时间、名称、值、站点ID、设备ID
+ * @param {Array<Object>} sheetsData - 多个Sheet的数据，每个Sheet包含name和data属性
+ * @returns {Object} 包含合并后的数据和处理信息
+ * @example
+ * // 输入格式（每个Sheet）:
+ * // [{ name: 'Sheet1', data: [
+ * //   ['时间', '值'],
+ * //   ['2026-05-07 18:11:40', '-10.043'],
+ * //   ...
+ * // ]}]
+ * // 输出格式:
+ * // [
+ * //   ['时间', 'Sheet1', 'Sheet2', ...],
+ * //   ['2026-05-07 18:11:40', '-10.043', '-11.234', ...],
+ * //   ...
+ * // ]
+ */
+function mergeExcelSheets(sheetsData) {
+  if (!sheetsData || sheetsData.length === 0) {
+    return { mergedData: [], info: '没有有效的Sheet数据' };
+  }
+
+  // 过滤无数据的Sheet（数据行少于2行的视为无数据）
+  const validSheets = sheetsData.filter(sheet => {
+    const sheetData = sheet.data;
+    return sheetData && sheetData.length >= 2;
+  });
+
+  if (validSheets.length === 0) {
+    return { mergedData: [], info: '没有有效的Sheet数据（所有Sheet数据不足）' };
+  }
+
+  // 用于存储所有时间点和对应的数据
+  const timeMap = new Map();
+  const validSheetNames = [];
+
+  // 处理每个有效的Sheet
+  validSheets.forEach((sheet, sheetIndex) => {
+    const sheetData = sheet.data;
+    const sheetName = sheet.name || `Sheet${sheetIndex + 1}`;
+    
+    // 获取表头，确定各列的索引
+    const headers = sheetData[0];
+    let timeIndex = -1;
+    let valueIndex = -1;
+
+    headers.forEach((header, index) => {
+      const headerTrimmed = String(header).trim();
+      if (headerTrimmed === '时间' || headerTrimmed === 'Time') {
+        timeIndex = index;
+      } else if (headerTrimmed === '值' || headerTrimmed === 'Value' || headerTrimmed === '数值') {
+        valueIndex = index;
+      }
+    });
+
+    // 如果找不到必要的列，跳过这个Sheet
+    if (timeIndex === -1 || valueIndex === -1) {
+      return;
+    }
+
+    // 使用Sheet名称作为列标题
+    validSheetNames.push(sheetName);
+
+    // 处理数据行（从第二行开始，第一行是表头）
+    for (let i = 1; i < sheetData.length; i++) {
+      const row = sheetData[i];
+      if (!row || row.length <= timeIndex) continue;
+
+      const timeStr = String(row[timeIndex]).trim();
+      const value = String(row[valueIndex]).trim();
+
+      if (!timeStr) continue;
+
+      // 解析时间戳作为key
+      const timeKey = parseTime(timeStr);
+      const finalKey = isNaN(timeKey) ? timeStr : timeKey;
+
+      // 如果这个时间点不存在，创建新条目
+      if (!timeMap.has(finalKey)) {
+        timeMap.set(finalKey, {
+          timeStr: timeStr,
+          values: new Array(validSheets.length).fill('')
+        });
+      }
+
+      // 设置当前Sheet的数据值
+      const entry = timeMap.get(finalKey);
+      entry.values[sheetIndex] = value;
+    }
+  });
+
+  // 如果没有数据，返回空结果
+  if (timeMap.size === 0) {
+    return { mergedData: [], info: '无法从Sheet中提取有效数据' };
+  }
+
+  // 将时间映射转换为数组并按时间排序
+  const sortedEntries = Array.from(timeMap.values()).sort((a, b) => {
+    const timeA = typeof a.timeStr === 'number' ? a.timeStr : parseTime(a.timeStr);
+    const timeB = typeof b.timeStr === 'number' ? b.timeStr : parseTime(b.timeStr);
+    return timeA - timeB;
+  });
+
+  // 构建合并后的表头
+  const mergedHeaders = ['时间'];
+  validSheetNames.forEach(sheetName => {
+    mergedHeaders.push(sheetName);
+  });
+
+  // 构建合并后的数据行
+  const mergedData = [mergedHeaders];
+  sortedEntries.forEach(entry => {
+    const row = [entry.timeStr];
+    row.push(...entry.values);
+    mergedData.push(row);
+  });
+
+  return {
+    mergedData: mergedData,
+    info: `成功合并${validSheetNames.length}个Sheet（过滤了${sheetsData.length - validSheetNames.length}个无数据Sheet），共${mergedData.length - 1}行数据，${mergedHeaders.length - 1}个参数列`
+  };
+}
+
 // 导出工具函数
 export {
   parseTime,
@@ -641,5 +767,6 @@ export {
   parseCSVContent,
   updateStatus,
   detectEncoding,
-  decodeData
+  decodeData,
+  mergeExcelSheets
 }

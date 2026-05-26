@@ -5,7 +5,7 @@
  * 协调各个模块之间的通信。
  */
 
-import { elements, selectedControlTime, originalData, currentPage, detectedDate, detectedDateSource, updateVariables, equalAxisEnabled, toggleLineEnabled } from './config.js';
+import { elements, selectedControlTime, originalData, currentPage, detectedDate, detectedDateSource, tableDisplayMode, updateVariables, equalAxisEnabled, toggleLineEnabled } from './config.js';
 import { parseTime, formatDateTime, updateStatus } from './utils.js';
 import { 
   handleDataFileUpload, 
@@ -15,7 +15,8 @@ import {
   confirmDataEncoding, 
   updateControlEncodingPreview, 
   confirmControlEncoding,
-  updateUIAfterDataLoad
+  updateUIAfterDataLoad,
+  updateTable
 } from './fileHandler.js';
 import { 
   drawChart, 
@@ -329,6 +330,31 @@ function cancelDateEdit() {
 }
 
 /**
+ * 切换表格显示模式
+ * @param {'raw' | 'processed'} mode - 显示模式
+ */
+function switchTableDisplayMode(mode) {
+  updateVariables({
+    tableDisplayMode: mode,
+    currentPage: 1 // 切换模式时重置到第一页
+  });
+  
+  // 更新按钮状态
+  if (mode === 'raw') {
+    elements.showRawDataBtn.classList.add('active');
+    elements.showProcessedDataBtn.classList.remove('active');
+    updateStatus('✅ 表格已切换为原始数据显示模式');
+  } else {
+    elements.showProcessedDataBtn.classList.add('active');
+    elements.showRawDataBtn.classList.remove('active');
+    updateStatus('✅ 表格已切换为处理后数据显示模式');
+  }
+  
+  // 重新更新表格
+  updateTable();
+}
+
+/**
  * 初始化事件监听器
  * @example
  * initEventListeners();
@@ -370,7 +396,7 @@ function initEventListeners() {
     autoTimeRange();
   });
   
-  // 手动选择编码checkbox事件
+  // 数据文件手动选择编码checkbox事件
   elements.manualEncoding.addEventListener('change', function() {
     if (this.checked) {
       // 显示编码选择器
@@ -382,6 +408,21 @@ function initEventListeners() {
     } else {
       // 隐藏编码选择器
       elements.encodingSelector.classList.add('d-none');
+    }
+  });
+  
+  // 控制文件手动选择编码checkbox事件
+  elements.manualControlEncoding.addEventListener('change', function() {
+    if (this.checked) {
+      // 显示编码选择器
+      elements.controlEncodingSelector.classList.remove('d-none');
+      // 如果已经选择了文件，更新编码预览
+      if (elements.controlFileInput.files.length > 0) {
+        updateControlEncodingPreview();
+      }
+    } else {
+      // 隐藏编码选择器
+      elements.controlEncodingSelector.classList.add('d-none');
     }
   });
   
@@ -404,6 +445,10 @@ function initEventListeners() {
   elements.nextPageBtn.addEventListener('click', () => changePage(currentPage + 1));
   elements.jumpBtn.addEventListener('click', jumpToPage);
   elements.pageSizeSelect.addEventListener('change', handlePageSizeChange);
+  
+  // 表格显示模式切换
+  elements.showRawDataBtn.addEventListener('click', () => switchTableDisplayMode('raw'));
+  elements.showProcessedDataBtn.addEventListener('click', () => switchTableDisplayMode('processed'));
   
   // Excel工作表选择
   elements.confirmSheetBtn.addEventListener('click', confirmSheetSelection);
