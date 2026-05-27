@@ -100,6 +100,12 @@ let toggleLineEnabled = false; // 去掉连线模式
 let currentFileName = null;
 
 /**
+ * 当前加载的数据文件编码
+ * @type {string|null}
+ */
+let currentFileEncoding = null;
+
+/**
  * 当前加载的数据文件日期（最后修改时间）
  * @type {Date|null}
  */
@@ -257,6 +263,7 @@ export {
   equalAxisEnabled,
   toggleLineEnabled,
   currentFileName,
+  currentFileEncoding,
   currentFileDate,
   detectedDate,
   detectedDateSource,
@@ -287,6 +294,7 @@ export function updateVariables(newValues) {
   if (newValues.equalAxisEnabled !== undefined) equalAxisEnabled = newValues.equalAxisEnabled;
   if (newValues.toggleLineEnabled !== undefined) toggleLineEnabled = newValues.toggleLineEnabled;
   if (newValues.currentFileName !== undefined) currentFileName = newValues.currentFileName;
+  if (newValues.currentFileEncoding !== undefined) currentFileEncoding = newValues.currentFileEncoding;
   if (newValues.currentFileDate !== undefined) currentFileDate = newValues.currentFileDate;
   if (newValues.detectedDate !== undefined) detectedDate = newValues.detectedDate;
   if (newValues.detectedDateSource !== undefined) detectedDateSource = newValues.detectedDateSource;

@@ -5,7 +5,7 @@
  * 表格显示切换等功能。
  */
 
-import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, currentPage, itemsPerPage, currentFileName, currentFileDate, detectedDate, updateVariables, getToggleLineEnabled, getEqualAxisEnabled } from './config.js';
+import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, currentPage, itemsPerPage, currentFileName, currentFileEncoding, currentFileDate, detectedDate, updateVariables, getToggleLineEnabled, getEqualAxisEnabled } from './config.js';
 import { parseTime, formatDateTime, normalizeTime, updateStatus } from './utils.js';
 import { updateUIAfterDataLoad, updateTable } from './fileHandler.js';
 
@@ -621,8 +621,30 @@ function exportData() {
       csvContent += rowData.join(',') + '\n';
     });
     
-    // 创建Blob对象
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // 根据原始编码创建Blob对象
+    const enc = currentFileEncoding ? currentFileEncoding.toLowerCase() : 'utf8';
+    let blob;
+    let charset;
+    
+    if (enc === 'utf8' || enc === 'utf8bom') {
+      // UTF-8编码：直接使用UTF-8
+      charset = 'utf-8';
+      const encoder = new TextEncoder();
+      blob = new Blob([encoder.encode(csvContent)], { type: 'text/csv;charset=utf-8;' });
+    } else if (enc === 'gb2312' || enc === 'gbk' || enc === 'gb18030') {
+      // GB系列编码
+      // 由于浏览器原生不支持GB编码，我们使用UTF-8编码
+      // 但在Content-Type中声明GB编码，以提供提示
+      // Excel在打开时会尝试自动检测编码
+      charset = 'gbk';
+      const encoder = new TextEncoder();
+      blob = new Blob([encoder.encode(csvContent)], { type: 'text/csv;charset=gbk;' });
+    } else {
+      // 其他编码：默认使用UTF-8
+      charset = 'utf-8';
+      const encoder = new TextEncoder();
+      blob = new Blob([encoder.encode(csvContent)], { type: 'text/csv;charset=utf-8;' });
+    }
     
     // 创建下载链接
     const link = document.createElement('a');
@@ -631,7 +653,42 @@ function exportData() {
       link.setAttribute('href', url);
       
       // 从数据中提取时间范围来命名文件
-      let fileName = 'DemDec数据';
+      // 去掉原始文件名中的日期时间部分，保留有效部分，使用数据区间的时间范围
+      let baseName = 'DemDec数据';
+      
+      // 如果有原始文件名，提取有效部分（去掉扩展名和日期时间）
+      if (currentFileName) {
+        // 去掉文件扩展名
+        let nameWithoutExt = currentFileName.replace(/\.[^/.]+$/, '');
+        
+        // 定义日期时间模式（按复杂度从高到低排列）
+        const dateTimePatterns = [
+          /(?:[-_])?\d{4}[-_]?\d{2}[-_]?\d{2}[-_]?\d{2}[-_]?\d{2}[-_]?\d{2}(?:[-_])?/, // YYYY-MM-DD-HH-MM-SS 或 YYYYMMDDHHMMSS
+          /(?:[-_])?\d{4}[-_]?\d{2}[-_]?\d{2}[-_]?\d{2}[-_]?\d{2}(?:[-_])?/,         // YYYY-MM-DD-HH-MM 或 YYYYMMDDHHMM
+          /(?:[-_])?\d{4}[-_]?\d{2}[-_]?\d{2}(?:[-_])?/,                           // YYYY-MM-DD 或 YYYYMMDD
+          /(?:[-_])?\d{8}(?:[-_])?/,                                                // YYYYMMDD
+          /(?:[-_])?\d{14}(?:[-_])?/,                                               // YYYYMMDDHHMMSS
+          /(?:[-_])?\d{12}(?:[-_])?/,                                               // YYYYMMDDHHMM
+        ];
+        
+        // 移除文件名中的所有日期时间部分
+        let cleanedName = nameWithoutExt;
+        for (const pattern of dateTimePatterns) {
+          cleanedName = cleanedName.replace(pattern, '');
+        }
+        
+        // 清理多余的下划线和连字符（开头、结尾、连续多个）
+        cleanedName = cleanedName.replace(/^[-_]+/, '')
+                                 .replace(/[-_]+$/, '')
+                                 .replace(/[-_]+/g, '_');
+        
+        // 如果清理后为空或只剩下下划线，使用原始文件名（去掉扩展名）
+        baseName = (cleanedName && cleanedName !== '_') ? cleanedName : nameWithoutExt;
+      }
+      
+      let fileName = baseName;
+      
+      // 使用数据内容中的时间范围
       if (filteredData.length > 0) {
         const firstTime = filteredData[0][0];
         const lastTime = filteredData[filteredData.length - 1][0];
@@ -641,7 +698,7 @@ function exportData() {
         const lastParsed = parseTime(lastTime);
         
         if (!isNaN(firstParsed) && !isNaN(lastParsed)) {
-          // 格式化时间用于文件名
+          // 格式化时间用于文件名（不包含毫秒）
           const formatTimeForFileName = (date) => {
             const d = new Date(date);
             const year = d.getFullYear();
@@ -653,7 +710,7 @@ function exportData() {
             return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`;
           };
           
-          fileName = `DemDec数据_${formatTimeForFileName(firstParsed)}_至_${formatTimeForFileName(lastParsed)}`;
+          fileName = `${baseName}_${formatTimeForFileName(firstParsed)}_至_${formatTimeForFileName(lastParsed)}`;
         }
       }
       

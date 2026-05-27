@@ -683,8 +683,11 @@ function processDataFile(data, encoding) {
   
   // 过滤全0列
   let newFilteredData;
+  let finalHeaders = filteredHeaders;
   if (elements.filterZeroColumns.checked) {
-    newFilteredData = filterZeroColumns(dataAfterEmptyFilter, filteredHeaders);
+    const result = filterZeroColumns(dataAfterEmptyFilter, filteredHeaders);
+    newFilteredData = result.data;
+    finalHeaders = result.headers;
   } else {
     newFilteredData = [...dataAfterEmptyFilter];
   }
@@ -695,7 +698,8 @@ function processDataFile(data, encoding) {
     rawHeaders: savedRawHeaders,
     originalData: newOriginalData,
     filteredData: newFilteredData,
-    headers: filteredHeaders
+    headers: finalHeaders,
+    currentFileEncoding: encoding
   });
   
   // 报告解析结果
@@ -768,7 +772,7 @@ function filterEmptyColumns(data, headerList) {
  * const filteredData = filterZeroColumns(data, headers);
  */
 function filterZeroColumns(data, headerList) {
-  if (data.length === 0) return data;
+  if (data.length === 0) return { headers: headerList, data: data };
   
   const nonZeroColumns = [];
   for (let i = 0; i < headerList.length; i++) {
@@ -789,12 +793,7 @@ function filterZeroColumns(data, headerList) {
   const newHeaders = nonZeroColumns.map(i => headerList[i]);
   const newData = data.map(row => nonZeroColumns.map(i => row[i]));
   
-  // 更新全局变量
-  updateVariables({
-    headers: newHeaders
-  });
-  
-  return newData;
+  return { headers: newHeaders, data: newData };
 }
 
 /**
@@ -976,7 +975,28 @@ function updateAxisSelectors() {
 function updateTable() {
   // 根据显示模式选择数据
   const displayHeaders = tableDisplayMode === 'raw' ? rawHeaders : headers;
-  const displayData = tableDisplayMode === 'raw' ? rawData : filteredData;
+  let displayData;
+  
+  if (tableDisplayMode === 'raw') {
+    // 原始数据模式：应用时间筛选，但不应用其他过滤（空列、全0列）
+    displayData = rawData;
+    
+    // 应用时间筛选
+    if (elements.timeRangeStart.value && elements.timeRangeEnd.value) {
+      const startTimestamp = parseTime(elements.timeRangeStart.value);
+      const endTimestamp = parseTime(elements.timeRangeEnd.value);
+      
+      if (!isNaN(startTimestamp) && !isNaN(endTimestamp)) {
+        displayData = displayData.filter(row => {
+          const rowTime = parseTime(row[0]);
+          return !isNaN(rowTime) && rowTime >= startTimestamp && rowTime <= endTimestamp;
+        });
+      }
+    }
+  } else {
+    // 处理后数据模式：应用所有过滤条件
+    displayData = filteredData;
+  }
   
   if (displayData.length === 0) {
     elements.tableHeader.innerHTML = '<tr><th colspan="100%" class="text-center text-muted">📄 暂无表格数据</th></tr>';
