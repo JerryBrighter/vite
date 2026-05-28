@@ -14,6 +14,10 @@ lerna-debug.log*
 *.xls
 *.txt
 
+# Test files
+test-*.js
+test-*.html
+
 node_modules
 dist
 dist-ssr
