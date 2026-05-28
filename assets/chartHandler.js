@@ -10,23 +10,26 @@ import { parseTime, formatDateTime, normalizeTime, updateStatus } from './utils.
 import { updateUIAfterDataLoad, updateTable } from './fileHandler.js';
 
 /**
- * 绘制图表
- * @example
- * // 当用户点击绘制图表按钮时调用
- * elements.drawChartBtn.addEventListener('click', drawChart);
+ * 验证图表输入参数
+ * @param {number} xIndex - X轴索引
+ * @param {number[]} yIndices - 左侧Y轴索引数组
+ * @param {number[]} y2Indices - 右侧Y轴索引数组
+ * @returns {string|null} 错误信息，验证通过返回null
  */
-function drawChart() {
-  const xIndex = parseInt(elements.xAxisSelect.value);
-  const yIndices = Array.from(elements.yAxisSelect.selectedOptions).map(option => parseInt(option.value)).filter(index => !isNaN(index));
-  const y2Indices = Array.from(elements.yAxis2Select.selectedOptions).map(option => parseInt(option.value)).filter(index => !isNaN(index));
-  
+function validateChartInput(xIndex, yIndices, y2Indices) {
   if (yIndices.length === 0 && y2Indices.length === 0) {
-    updateStatus('⚠️ 请至少选择一个Y轴数据列');
-    return;
+    return '⚠️ 请至少选择一个Y轴数据列';
   }
-  
-  // 准备canvas元素
+  return null;
+}
+
+/**
+ * 设置Canvas元素
+ * @returns {Object} 包含canvas和context的对象
+ */
+function setupCanvasElement() {
   elements.chartContainer.innerHTML = '';
+  
   const canvas = document.createElement('canvas');
   canvas.id = 'lineChart';
   canvas.style.display = 'block';
@@ -34,23 +37,20 @@ function drawChart() {
   canvas.style.width = '100%';
   canvas.style.border = '1px solid #ddd';
   canvas.style.borderRadius = '8px';
+  
   elements.chartContainer.appendChild(canvas);
   elements.chartContainer.style.height = '450px';
   elements.chartContainer.style.overflow = 'hidden';
   elements.chartContainer.style.border = '1px solid #ddd';
   elements.chartContainer.style.borderRadius = '8px';
-  // 更新elements.lineChart引用
+  
   elements.lineChart = canvas;
   
-  // 设置canvas实际尺寸 - 确保内部尺寸和显示尺寸匹配
   const containerWidth = elements.chartContainer.clientWidth || 800;
   const displayHeight = 400;
   
-  // 设置canvas内部尺寸（用于绘图）
   canvas.width = containerWidth;
   canvas.height = displayHeight;
-  
-  // 设置canvas显示尺寸（CSS）- 确保显示尺寸和内部尺寸一致
   canvas.style.width = containerWidth + 'px';
   canvas.style.height = displayHeight + 'px';
   canvas.style.maxWidth = '100%';
@@ -61,22 +61,33 @@ function drawChart() {
   console.log('Canvas显示尺寸:', canvas.style.width, 'x', canvas.style.height);
   console.log('容器宽度:', containerWidth);
   
-  const ctx = elements.lineChart.getContext('2d');
+  const ctx = canvas.getContext('2d');
   console.log('Context:', ctx);
   
-  // 强制重绘
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  // 销毁现有图表
-  if (currentChart) {
-    currentChart.destroy();
+  return { canvas, ctx };
+}
+
+/**
+ * 对数据进行排序和抽样
+ * @param {Array} data - 原始数据
+ * @param {number} xIndex - X轴索引
+ * @param {boolean} isNumeric - 是否为数值类型
+ * @returns {Object} 包含处理后的数据和抽样信息
+ */
+function sortAndSampleData(data, xIndex, isNumeric) {
+  let sortedData = [...data];
+  
+  if (isNumeric && sortedData.length > 1) {
+    sortedData.sort((a, b) => {
+      const numA = parseFloat(a[xIndex]);
+      const numB = parseFloat(b[xIndex]);
+      return numA - numB;
+    });
   }
   
-  // 检查X轴是否为数值类型（不是时间/日期）
-  // 如果是数值类型，需要对数据进行排序
-  let sortedData = [...filteredData];
-  
-  // 处理大数据量：如果数据超过1000行，进行抽样
+  let sampledInfo = null;
   if (sortedData.length > 1000) {
     const sampleSize = 1000;
     const step = Math.ceil(sortedData.length / sampleSize);
@@ -85,19 +96,27 @@ function drawChart() {
       sampledData.push(sortedData[i]);
     }
     sortedData = sampledData;
-    updateStatus(`⚠️ 数据量较大（${filteredData.length}行），已抽样显示${sortedData.length}行`);
+    sampledInfo = {
+      originalCount: data.length,
+      sampledCount: sortedData.length
+    };
   }
   
-  const xColumnValues = sortedData.map(row => row[xIndex]);
-  
-  // 检测是否为时间格式
+  return { sortedData, sampledInfo };
+}
+
+/**
+ * 检测X轴数据类型
+ * @param {Array} xColumnValues - X轴列的值
+ * @returns {Object} 包含类型信息的对象
+ */
+function detectAxisType(xColumnValues) {
   const isTimeFormat = (val) => {
     const timePattern = /^\d{1,2}:\d{1,2}:\d{1,2}(\.\d+)?$/;
     const dateTimePattern = /^\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{1,2}:\d{1,2}(\.\d+)?$/;
     return timePattern.test(val) || dateTimePattern.test(val);
   };
   
-  // 检测是否为日期时间格式
   const isDateTimeFormat = (val) => {
     const dateTimePatterns = [
       /^\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{1,2}:\d{1,2}/,
@@ -107,94 +126,82 @@ function drawChart() {
     return dateTimePatterns.some(pattern => pattern.test(val));
   };
   
-  // 只有当所有值都是纯数字且不是时间格式时，才认为是数值类型
-  const isNumericXAxis = xColumnValues.length > 0 && xColumnValues.every(val => {
+  const isNumeric = xColumnValues.length > 0 && xColumnValues.every(val => {
     if (!val || val.trim() === '') return false;
-    // 排除时间格式
     if (isTimeFormat(val)) return false;
-    // 排除日期时间格式
     if (isDateTimeFormat(val)) return false;
     const num = parseFloat(val);
     return !isNaN(num) && isFinite(num);
   });
   
-  // 如果X轴是数值类型，按X轴数值从小到大排序
-  if (isNumericXAxis && xColumnValues.length > 1) {
-    sortedData.sort((a, b) => {
-      const numA = parseFloat(a[xIndex]);
-      const numB = parseFloat(b[xIndex]);
-      return numA - numB;
-    });
+  return { isNumeric };
+}
+
+/**
+ * 计算坐标轴范围
+ * @param {Array} sortedData - 排序后的数据
+ * @param {number} xIndex - X轴索引
+ * @param {number[]} yIndices - 左侧Y轴索引
+ * @param {number[]} y2Indices - 右侧Y轴索引
+ * @returns {Object} 包含坐标轴范围的对象
+ */
+function calculateAxisRange(sortedData, xIndex, yIndices, y2Indices) {
+  let xMin, xMax, yMin, yMax;
+  
+  const xValues = sortedData.map(row => parseFloat(row[xIndex]));
+  xMin = Math.min(...xValues);
+  xMax = Math.max(...xValues);
+  
+  let allYValues = [];
+  yIndices.forEach(index => {
+    const result = processDatasetData(sortedData, index);
+    allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+  });
+  y2Indices.forEach(index => {
+    const result = processDatasetData(sortedData, index);
+    allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+  });
+  
+  if (allYValues.length > 0) {
+    yMin = Math.min(...allYValues);
+    yMax = Math.max(...allYValues);
   }
   
-  // 计算X轴和Y轴的数值范围，用于整齐坐标轴
-  let xMin, xMax, yMin, yMax;
-  if (isNumericXAxis) {
-    const xValues = sortedData.map(row => parseFloat(row[xIndex]));
-    xMin = Math.min(...xValues);
-    xMax = Math.max(...xValues);
-    
-    // 计算Y轴范围（收集所有Y轴数据）
-    let allYValues = [];
-    yIndices.forEach(index => {
-      const result = processDatasetData(sortedData, index);
-      allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
-    });
-    y2Indices.forEach(index => {
-      const result = processDatasetData(sortedData, index);
-      allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
-    });
-    
-    if (allYValues.length > 0) {
-      yMin = Math.min(...allYValues);
-      yMax = Math.max(...allYValues);
-    }
-    
-    // 整齐坐标轴：让X轴和Y轴每个像素点显示相同的标尺数值
-    if (getEqualAxisEnabled() && xMin !== undefined && xMax !== undefined && yMin !== undefined && yMax !== undefined) {
-      // 获取图表容器尺寸
-      const chartContainer = document.getElementById('chartContainer');
-      if (chartContainer) {
-        const containerWidth = chartContainer.clientWidth;
-        const containerHeight = chartContainer.clientHeight;
+  if (getEqualAxisEnabled() && xMin !== undefined && xMax !== undefined && yMin !== undefined && yMax !== undefined) {
+    const chartContainer = document.getElementById('chartContainer');
+    if (chartContainer) {
+      const containerWidth = chartContainer.clientWidth;
+      const containerHeight = chartContainer.clientHeight;
+      
+      if (containerWidth > 0 && containerHeight > 0) {
+        const xRange = xMax - xMin;
+        const yRange = yMax - yMin;
+        const aspectRatio = containerWidth / containerHeight;
         
-        if (containerWidth > 0 && containerHeight > 0) {
-          // 计算X轴和Y轴的数值范围
-          const xRange = xMax - xMin;
-          const yRange = yMax - yMin;
-          
-          // 计算理想的数值范围，使X轴和Y轴的比例相同
-          const aspectRatio = containerWidth / containerHeight;
-          
-          // 调整X轴或Y轴的范围，使它们的比例与容器比例匹配
-          if (xRange / yRange > aspectRatio) {
-            // X轴范围相对较大，调整Y轴范围
-            const targetYRange = xRange / aspectRatio;
-            const yCenter = (yMin + yMax) / 2;
-            yMin = yCenter - targetYRange / 2;
-            yMax = yCenter + targetYRange / 2;
-          } else {
-            // Y轴范围相对较大，调整X轴范围
-            const targetXRange = yRange * aspectRatio;
-            const xCenter = (xMin + xMax) / 2;
-            xMin = xCenter - targetXRange / 2;
-            xMax = xCenter + targetXRange / 2;
-          }
+        if (xRange / yRange > aspectRatio) {
+          const targetYRange = xRange / aspectRatio;
+          const yCenter = (yMin + yMax) / 2;
+          yMin = yCenter - targetYRange / 2;
+          yMax = yCenter + targetYRange / 2;
+        } else {
+          const targetXRange = yRange * aspectRatio;
+          const xCenter = (xMin + xMax) / 2;
+          xMin = xCenter - targetXRange / 2;
+          xMax = xCenter + targetXRange / 2;
         }
       }
     }
   }
   
-  // 准备数据
-  const labels = sortedData.map(row => normalizeTime(row[xIndex], { 
-    fileName: currentFileName, 
-    fileDate: currentFileDate,
-    detectedDate: detectedDate
-  }));
-  const datasets = [];
-  
-  // 颜色配置
-  const colors = [
+  return { xMin, xMax, yMin, yMax };
+}
+
+/**
+ * 获取图表颜色配置
+ * @returns {Array} 颜色配置数组
+ */
+function getChartColors() {
+  return [
     { border: '#0d6efd', background: 'rgba(13, 110, 253, 0.1)' },
     { border: '#dc3545', background: 'rgba(220, 53, 69, 0.1)' },
     { border: '#198754', background: 'rgba(25, 135, 84, 0.1)' },
@@ -204,98 +211,86 @@ function drawChart() {
     { border: '#20c997', background: 'rgba(32, 201, 151, 0.1)' },
     { border: '#0dcaf0', background: 'rgba(13, 202, 240, 0.1)' }
   ];
+}
+
+/**
+ * 创建单个数据集
+ * @param {Object} processedData - 处理后的数据
+ * @param {number} index - 数据列索引
+ * @param {number} datasetIndex - 数据集索引
+ * @param {string} yAxisID - Y轴ID
+ * @param {Object} color - 颜色配置
+ * @param {string} defaultLabel - 默认标签
+ * @returns {Object} 数据集配置对象
+ */
+function createSingleDataset(processedData, index, datasetIndex, yAxisID, color, defaultLabel) {
+  const { data, textMapping, reverseTextMapping, rowTextValues } = processDatasetData(processedData, index);
   
-  // 左侧Y轴数据
+  return {
+    label: headers[index]?.trim() || defaultLabel,
+    data: data,
+    textMapping: textMapping,
+    reverseTextMapping: reverseTextMapping,
+    rowTextValues: rowTextValues,
+    borderColor: color.border,
+    backgroundColor: color.background,
+    borderWidth: 2,
+    tension: 0.2,
+    fill: false,
+    showLine: true,
+    pointRadius: 2,
+    pointHoverRadius: 4,
+    pointBackgroundColor: color.border,
+    pointBorderWidth: 1,
+    yAxisID: yAxisID
+  };
+}
+
+/**
+ * 创建所有数据集
+ * @param {Array} sortedData - 排序后的数据
+ * @param {number[]} yIndices - 左侧Y轴索引
+ * @param {number[]} y2Indices - 右侧Y轴索引
+ * @returns {Array} 数据集数组
+ */
+function createDatasets(sortedData, yIndices, y2Indices) {
+  const datasets = [];
+  const colors = getChartColors();
   let colorIndex = 0;
+  
   yIndices.forEach((index, i) => {
-    const { data, textMapping, reverseTextMapping, rowTextValues } = processDatasetData(sortedData, index);
     const color = colors[colorIndex % colors.length];
-    datasets.push({
-      label: headers[index]?.trim() || `Y轴${i + 1}`,
-      data: data,
-      textMapping: textMapping,
-      reverseTextMapping: reverseTextMapping,
-      rowTextValues: rowTextValues,
-      borderColor: color.border,
-      backgroundColor: color.background,
-      borderWidth: 2,
-      tension: 0.2,
-      fill: false,
-      showLine: true,
-      pointRadius: 2,
-      pointHoverRadius: 4,
-      pointBackgroundColor: color.border,
-      pointBorderWidth: 1,
-      yAxisID: 'y'
-    });
+    const dataset = createSingleDataset(
+      sortedData, index, i, 'y', color, `Y轴${i + 1}`
+    );
+    datasets.push(dataset);
     colorIndex++;
   });
   
-  // 右侧Y轴数据
   y2Indices.forEach((index, i) => {
-    const { data, textMapping, reverseTextMapping, rowTextValues } = processDatasetData(sortedData, index);
     const color = colors[colorIndex % colors.length];
-    datasets.push({
-      label: headers[index]?.trim() || `Y轴${yIndices.length + i + 1}`,
-      data: data,
-      textMapping: textMapping,
-      reverseTextMapping: reverseTextMapping,
-      rowTextValues: rowTextValues,
-      borderColor: color.border,
-      backgroundColor: color.background,
-      borderWidth: 2,
-      tension: 0.2,
-      showLine: true,
-      fill: false,
-      pointRadius: 2,
-      pointHoverRadius: 4,
-      pointBackgroundColor: color.border,
-      pointBorderWidth: 1,
-      yAxisID: 'y1'
-    });
+    const dataset = createSingleDataset(
+      sortedData, index, yIndices.length + i, 'y1', color, `Y轴${yIndices.length + i + 1}`
+    );
+    datasets.push(dataset);
     colorIndex++;
   });
   
-  // 添加调试信息
-  console.log('绘制图表 - 数据检查:');
-  console.log('X轴索引:', xIndex);
-  console.log('Y轴索引:', yIndices);
-  console.log('右侧Y轴索引:', y2Indices);
-  console.log('数据长度:', sortedData.length);
-  console.log('标签数量:', labels.length);
-  console.log('数据集数量:', datasets.length);
-  console.log('标签示例:', labels.slice(0, 3));
-  console.log('isNumericXAxis:', isNumericXAxis);
+  return datasets;
+}
+
+/**
+ * 创建图表配置
+ * @param {Array} labels - 标签数组
+ * @param {Array} datasets - 数据集数组
+ * @param {number} xIndex - X轴索引
+ * @param {Object} axisRange - 坐标轴范围
+ * @returns {Object} Chart.js配置对象
+ */
+function createChartConfig(labels, datasets, xIndex, axisRange) {
+  const { yMin, yMax } = axisRange;
   
-  // 检查每个数据集的数据
-  datasets.forEach((dataset, index) => {
-    console.log(`数据集 ${index} (${dataset.label}) 数据长度:`, dataset.data.length);
-    console.log(`数据集 ${index} 前5个数据点:`, dataset.data.slice(0, 5));
-    
-    // 计算数据范围
-    const numericData = dataset.data.filter(v => typeof v === 'number' && !isNaN(v));
-    if (numericData.length > 0) {
-      const min = Math.min(...numericData);
-      const max = Math.max(...numericData);
-      const range = max - min;
-      console.log(`数据集 ${index} 数据范围: ${min.toFixed(6)} - ${max.toFixed(6)} (范围: ${range.toFixed(6)})`);
-    }
-  });
-  
-  // 创建图表
-  console.log('图表配置 - 数据集详情:');
-  datasets.forEach((dataset, index) => {
-    console.log(`数据集 ${index}:`, {
-      label: dataset.label,
-      borderColor: dataset.borderColor,
-      borderWidth: dataset.borderWidth,
-      showLine: dataset.showLine,
-      dataLength: dataset.data.length,
-      sampleData: dataset.data.slice(0, 3)
-    });
-  });
-  
-  const chart = new Chart(ctx, {
+  return {
     type: 'line',
     data: {
       labels: labels,
@@ -392,7 +387,7 @@ function drawChart() {
       },
       plugins: {
         legend: {
-          display: false // 不显示默认图例，使用自定义图例
+          display: false
         },
         tooltip: {
           mode: 'index',
@@ -424,17 +419,95 @@ function drawChart() {
         }
       }
     }
+  };
+}
+
+/**
+ * 绘制图表
+ * @example
+ * // 当用户点击绘制图表按钮时调用
+ * elements.drawChartBtn.addEventListener('click', drawChart);
+ */
+function drawChart() {
+  const xIndex = parseInt(elements.xAxisSelect.value);
+  const yIndices = Array.from(elements.yAxisSelect.selectedOptions).map(option => parseInt(option.value)).filter(index => !isNaN(index));
+  const y2Indices = Array.from(elements.yAxis2Select.selectedOptions).map(option => parseInt(option.value)).filter(index => !isNaN(index));
+  
+  const validationError = validateChartInput(xIndex, yIndices, y2Indices);
+  if (validationError) {
+    updateStatus(validationError);
+    return;
+  }
+  
+  const { canvas, ctx } = setupCanvasElement();
+  
+  if (currentChart) {
+    currentChart.destroy();
+  }
+  
+  const xColumnValues = filteredData.map(row => row[xIndex]);
+  const { isNumeric } = detectAxisType(xColumnValues);
+  
+  const { sortedData: processedData, sampledInfo } = sortAndSampleData(filteredData, xIndex, isNumeric);
+  if (sampledInfo) {
+    updateStatus(`⚠️ 数据量较大（${sampledInfo.originalCount}行），已抽样显示${sampledInfo.sampledCount}行`);
+  }
+  
+  const axisRange = calculateAxisRange(processedData, xIndex, yIndices, y2Indices);
+  
+  const labels = processedData.map(row => normalizeTime(row[xIndex], { 
+    fileName: currentFileName, 
+    fileDate: currentFileDate,
+    detectedDate: detectedDate
+  }));
+  
+  const datasets = createDatasets(processedData, yIndices, y2Indices);
+  
+  console.log('绘制图表 - 数据检查:');
+  console.log('X轴索引:', xIndex);
+  console.log('Y轴索引:', yIndices);
+  console.log('右侧Y轴索引:', y2Indices);
+  console.log('数据长度:', processedData.length);
+  console.log('标签数量:', labels.length);
+  console.log('数据集数量:', datasets.length);
+  console.log('标签示例:', labels.slice(0, 3));
+  console.log('isNumericXAxis:', isNumeric);
+  
+  datasets.forEach((dataset, index) => {
+    console.log(`数据集 ${index} (${dataset.label}) 数据长度:`, dataset.data.length);
+    console.log(`数据集 ${index} 前5个数据点:`, dataset.data.slice(0, 5));
+    
+    const numericData = dataset.data.filter(v => typeof v === 'number' && !isNaN(v));
+    if (numericData.length > 0) {
+      const min = Math.min(...numericData);
+      const max = Math.max(...numericData);
+      const range = max - min;
+      console.log(`数据集 ${index} 数据范围: ${min.toFixed(6)} - ${max.toFixed(6)} (范围: ${range.toFixed(6)})`);
+    }
   });
+  
+  console.log('图表配置 - 数据集详情:');
+  datasets.forEach((dataset, index) => {
+    console.log(`数据集 ${index}:`, {
+      label: dataset.label,
+      borderColor: dataset.borderColor,
+      borderWidth: dataset.borderWidth,
+      showLine: dataset.showLine,
+      dataLength: dataset.data.length,
+      sampleData: dataset.data.slice(0, 3)
+    });
+  });
+  
+  const chartConfig = createChartConfig(labels, datasets, xIndex, axisRange);
+  const chart = new Chart(ctx, chartConfig);
   
   console.log('图表创建成功:', chart);
   
-  // 确保图表正确渲染
   setTimeout(() => {
     chart.update('resize');
     console.log('图表已更新');
   }, 100);
   
-  // 更新全局变量
   updateVariables({
     xAxisIndex: xIndex,
     yAxisIndices: yIndices,
@@ -443,7 +516,6 @@ function drawChart() {
   });
 
   
-  // 添加自定义图例
   addChartLegend(datasets);
   
   updateStatus('✅ 图表绘制成功！');
@@ -1221,6 +1293,12 @@ function addSliderEvents() {
     if (e.target === elements.sliderHandleMin || e.target === elements.sliderHandleMax) {
       isDragging = true;
       draggingHandle = e.target;
+      draggingHandle.classList.add('dragging');
+      if (draggingHandle === elements.sliderHandleMin) {
+        elements.sliderValueMin.classList.add('visible');
+      } else {
+        elements.sliderValueMax.classList.add('visible');
+      }
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
       e.preventDefault();
@@ -1289,7 +1367,12 @@ function addSliderEvents() {
   
   function handleMouseUp() {
     isDragging = false;
-    draggingHandle = null;
+    if (draggingHandle) {
+      draggingHandle.classList.remove('dragging');
+      draggingHandle = null;
+    }
+    elements.sliderValueMin.classList.remove('visible');
+    elements.sliderValueMax.classList.remove('visible');
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
     
@@ -1377,6 +1460,31 @@ function addSliderEvents() {
   });
   
   document.addEventListener('touchend', handleMouseUp);
+  
+  // 添加悬停显示标签功能
+  elements.sliderHandleMin.addEventListener('mouseenter', function() {
+    if (!isDragging && elements.sliderValueMin) {
+      elements.sliderValueMin.classList.add('visible');
+    }
+  });
+  
+  elements.sliderHandleMin.addEventListener('mouseleave', function() {
+    if (!isDragging && elements.sliderValueMin) {
+      elements.sliderValueMin.classList.remove('visible');
+    }
+  });
+  
+  elements.sliderHandleMax.addEventListener('mouseenter', function() {
+    if (!isDragging && elements.sliderValueMax) {
+      elements.sliderValueMax.classList.add('visible');
+    }
+  });
+  
+  elements.sliderHandleMax.addEventListener('mouseleave', function() {
+    if (!isDragging && elements.sliderValueMax) {
+      elements.sliderValueMax.classList.remove('visible');
+    }
+  });
   
   sliderEventsAdded = true;
 }

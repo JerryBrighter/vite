@@ -166,6 +166,179 @@ body {
   margin: 20px 0;
 }
 
+/* 现代滑块样式 */
+.modern-slider-wrapper {
+  position: relative;
+  width: 90%;
+  height: 80px;
+  max-width: 90%;
+  margin: 0 auto;
+}
+
+/* 刻度标记 */
+.modern-slider-marks {
+  position: absolute;
+  width: 100%;
+  top: -25px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.modern-slider-mark {
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: center;
+  position: relative;
+}
+
+.modern-slider-mark::before {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  width: 1px;
+  height: 6px;
+  background: #d1d5db;
+  transform: translateX(-50%);
+}
+
+.modern-slider-mark.active {
+  color: #667eea;
+  font-weight: 500;
+}
+
+.modern-slider-mark.active::before {
+  background: #667eea;
+  height: 10px;
+}
+
+/* 滑块轨道背景 */
+.modern-slider-track {
+  position: absolute;
+  width: 100%;
+  height: 12px;
+  background: linear-gradient(to right, #e0e5ec 0%, #f0f2f5 100%);
+  border-radius: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* 选中区域 */
+.modern-slider-selected {
+  position: absolute;
+  height: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 
+    0 2px 8px rgba(102, 126, 234, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: width 0.1s ease-out, left 0.1s ease-out;
+}
+
+.modern-slider-selected::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), transparent);
+  border-radius: 6px 6px 0 0;
+}
+
+/* 滑块手柄 */
+.modern-slider-handle {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 50%;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  cursor: grab;
+  z-index: 10;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border: 3px solid #667eea;
+  transition: all 0.2s ease;
+}
+
+.modern-slider-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.modern-slider-handle:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+  box-shadow: 
+    0 6px 20px rgba(102, 126, 234, 0.35),
+    0 3px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border-color: #764ba2;
+}
+
+.modern-slider-handle.dragging {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 
+    0 8px 25px rgba(102, 126, 234, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border-color: #764ba2;
+}
+
+/* 数值标签 */
+.modern-slider-label {
+  position: absolute;
+  top: 55px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4b5563;
+  white-space: nowrap;
+  padding: 4px 10px;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 5;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.modern-slider-label.visible {
+  opacity: 1;
+}
+
+.modern-slider-label::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid white;
+  transform: translateX(-50%);
+}
+
 /* 数据表格区域 */
 .table-controls {
   margin: 20px 0 10px 0;

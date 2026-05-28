@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel解析测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/cpexcel.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover {
+            border-color: #0d6efd;
+            background-color: #e3f2fd;
+        }
+        .result-section {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        table {
+            font-size: 12px;
+        }
+        .highlight {
+            background-color: #d4edda;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>📊 Excel文件解析测试</h1>
+        <p class="text-muted">测试Excel文件的读入、编码解析和多Sheet合并功能</p>
+
+        <!-- 文件上传区域 -->
+        <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+            <div>
+                <h3>📁 点击或拖拽上传Excel文件</h3>
+                <p class="text-muted mt-2">支持 .xlsx 和 .xls 格式</p>
+            </div>
+        </div>
+
+        <!-- 解析结果 -->
+        <div class="result-section" id="resultSection" style="display: none;">
+            <h3>📋 解析结果</h3>
+            
+            <!-- 文件信息 -->
+            <div class="mb-4">
+                <h4>基本信息</h4>
+                <div id="fileInfo"></div>
+            </div>
+
+            <!-- Sheet列表 -->
+            <div class="mb-4">
+                <h4>工作表列表</h4>
+                <div id="sheetList"></div>
+            </div>
+
+            <!-- 原始数据预览 -->
+            <div class="mb-4">
+                <h4>原始数据预览</h4>
+                <div id="rawDataPreview"></div>
+            </div>
+
+            <!-- 多Sheet合并结果 -->
+            <div class="mb-4">
+                <h4>🔄 多Sheet合并结果</h4>
+                <div id="mergedResult"></div>
+            </div>
+        </div>
+
+        <!-- 调试信息 -->
+        <div class="result-section" id="debugSection" style="display: none;">
+            <h3>🔧 调试信息</h3>
+            <pre id="debugLog"></pre>
+        </div>
+    </div>
+
+    <script>
+        // 调试日志
+        let debugLog = '';
+        function log(msg) {
+            debugLog += `${new Date().toLocaleTimeString()} - ${msg}\n`;
+            console.log(msg);
+        }
+
+        // 上传区域点击事件
+        document.getElementById('uploadArea').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        // 拖拽上传
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#0d6efd';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#ccc';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#ccc';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // 文件选择事件
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        // 处理文件
+        async function handleFile(file) {
+            debugLog = '';
+            log(`开始处理文件: ${file.name}`);
+            log(`文件大小: ${(file.size / 1024).toFixed(2)} KB`);
+            log(`文件类型: ${file.type}`);
+
+            try {
+                const data = await readFileAsync(file);
+                log('文件读取完成');
+                
+                // 检查cpexcel是否加载
+                if (typeof XLSX !== 'undefined') {
+                    log('XLSX库已加载');
+                    if (typeof XLSX.cptable !== 'undefined') {
+                        log(`cpexcel编码支持已加载，支持${Object.keys(XLSX.cptable).length}种编码`);
+                    } else {
+                        log('警告: cpexcel编码支持未加载');
+                    }
+                }
+
+                // 尝试多种配置解析
+                const results = [];
+                
+                // 配置1: 标准配置
+                results.push(await parseExcel(data, '标准配置', {
+                    type: 'array',
+                    cellStyles: true,
+                    cellText: true,
+                    cellDates: true,
+                    raw: false
+                }));
+
+                // 配置2: GBK编码
+                results.push(await parseExcel(data, 'GBK编码 (codepage: 936)', {
+                    type: 'array',
+                    codepage: 936,
+                    cellStyles: true,
+                    cellText: true,
+                    cellDates: true,
+                    raw: false
+                }));
+
+                // 配置3: UTF-8编码
+                results.push(await parseExcel(data, 'UTF-8编码 (codepage: 65001)', {
+                    type: 'array',
+                    codepage: 65001,
+                    cellStyles: true,
+                    cellText: true,
+                    cellDates: true,
+                    raw: false
+                }));
+
+                // 配置4: raw模式
+                results.push(await parseExcel(data, 'Raw模式', {
+                    type: 'array',
+                    raw: true
+                }));
+
+                // 显示结果
+                displayResults(file, results);
+
+            } catch (error) {
+                log(`解析失败: ${error.message}`);
+                alert(`解析失败: ${error.message}`);
+            }
+        }
+
+        // 异步读取文件
+        function readFileAsync(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(new Uint8Array(e.target.result));
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // 解析Excel文件
+        async function parseExcel(data, configName, options) {
+            log(`尝试解析 [${configName}]...`);
+            try {
+                const workbook = XLSX.read(data, options);
+                log(`解析成功，包含${workbook.SheetNames.length}个Sheet`);
+                
+                const sheetsData = workbook.SheetNames.map(sheetName => {
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                        header: 1,
+                        raw: false,
+                        dateNF: 'yyyy-mm-dd hh:mm:ss',
+                        defval: ''
+                    });
+                    return { name: sheetName, data: jsonData };
+                });
+
+                return {
+                    success: true,
+                    configName: configName,
+                    workbook: workbook,
+                    sheetsData: sheetsData,
+                    mergedData: mergeExcelSheetsTest(sheetsData)
+                };
+            } catch (error) {
+                log(`解析失败 [${configName}]: ${error.message}`);
+                return {
+                    success: false,
+                    configName: configName,
+                    error: error.message
+                };
+            }
+        }
+
+        // 测试多Sheet合并
+        function mergeExcelSheetsTest(sheetsData) {
+            log('开始合并多Sheet数据...');
+            
+            if (!sheetsData || sheetsData.length === 0) {
+                return { mergedData: [], info: '没有有效的Sheet数据' };
+            }
+
+            // 过滤无数据的Sheet（数据行少于2行的视为无数据）
+            const validSheets = sheetsData.filter(sheet => {
+                const sheetData = sheet.data;
+                return sheetData && sheetData.length >= 2;
+            });
+
+            log(`过滤后有效Sheet数量: ${validSheets.length} (原始: ${sheetsData.length})`);
+            
+            if (validSheets.length === 0) {
+                return { mergedData: [], info: '没有有效的Sheet数据（所有Sheet数据不足）' };
+            }
+
+            const timeMap = new Map();
+            const validSheetNames = [];
+
+            validSheets.forEach((sheet, sheetIndex) => {
+                const sheetData = sheet.data;
+                const sheetName = sheet.name || `Sheet${sheetIndex + 1}`;
+                
+                const headers = sheetData[0];
+                let timeIndex = -1;
+                let valueIndex = -1;
+
+                log(`Sheet ${sheetName} 表头: ${headers.slice(0, 5).join(', ')}...`);
+
+                headers.forEach((header, index) => {
+                    const headerTrimmed = String(header).trim();
+                    if (headerTrimmed === '时间' || headerTrimmed === 'Time') {
+                        timeIndex = index;
+                        log(`找到时间列，索引: ${index}`);
+                    } else if (headerTrimmed === '值' || headerTrimmed === 'Value' || headerTrimmed === '数值') {
+                        valueIndex = index;
+                        log(`找到值列，索引: ${index}`);
+                    }
+                });
+
+                if (timeIndex === -1 || valueIndex === -1) {
+                    log(`Sheet ${sheetName} 缺少必要列 (时间:${timeIndex}, 值:${valueIndex})，跳过`);
+                    return;
+                }
+
+                // 使用Sheet名称作为列标题
+                validSheetNames.push(sheetName);
+
+                for (let i = 1; i < sheetData.length; i++) {
+                    const row = sheetData[i];
+                    if (!row || row.length <= timeIndex) continue;
+
+                    const timeStr = String(row[timeIndex]).trim();
+                    const value = String(row[valueIndex]).trim();
+
+                    if (!timeStr) continue;
+
+                    const timeKey = parseTimeTest(timeStr);
+                    const finalKey = isNaN(timeKey) ? timeStr : timeKey;
+
+                    if (!timeMap.has(finalKey)) {
+                        timeMap.set(finalKey, {
+                            timeStr: timeStr,
+                            values: new Array(validSheets.length).fill('')
+                        });
+                    }
+
+                    const entry = timeMap.get(finalKey);
+                    entry.values[sheetIndex] = value;
+                }
+            });
+
+            if (timeMap.size === 0) {
+                return { mergedData: [], info: '无法从Sheet中提取有效数据' };
+            }
+
+            const sortedEntries = Array.from(timeMap.values()).sort((a, b) => {
+                const timeA = typeof a.timeStr === 'number' ? a.timeStr : parseTimeTest(a.timeStr);
+                const timeB = typeof b.timeStr === 'number' ? b.timeStr : parseTimeTest(b.timeStr);
+                return timeA - timeB;
+            });
+
+            const mergedHeaders = ['时间'];
+            validSheetNames.forEach(sheetName => {
+                mergedHeaders.push(sheetName);
+            });
+
+            const mergedData = [mergedHeaders];
+            sortedEntries.forEach(entry => {
+                const row = [entry.timeStr];
+                row.push(...entry.values);
+                mergedData.push(row);
+            });
+
+            const info = `成功合并${validSheetNames.length}个Sheet（过滤了${sheetsData.length - validSheetNames.length}个无数据Sheet），共${mergedData.length - 1}行数据，${mergedHeaders.length - 1}个参数列`;
+            log(info);
+
+            return { mergedData: mergedData, info: info };
+        }
+
+        // 时间解析测试
+        function parseTimeTest(timeStr) {
+            const date = new Date(timeStr);
+            if (!isNaN(date.getTime())) {
+                return date.getTime();
+            }
+
+            const patterns = [
+                /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/,
+                /^(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/,
+                /^(\d{2}):(\d{2}):(\d{2}):(\d{3})$/
+            ];
+
+            for (const pattern of patterns) {
+                const match = String(timeStr).match(pattern);
+                if (match) {
+                    if (match.length === 8) {
+                        const [, year, month, day, hour, minute, second, ms] = match;
+                        const milliseconds = ms ? parseFloat(ms) * 1000 : 0;
+                        return new Date(year, month - 1, day, hour, minute, second, milliseconds).getTime();
+                    } else if (match.length === 5) {
+                        const [, hour, minute, second, ms] = match;
+                        const date = new Date();
+                        const milliseconds = ms.startsWith('.') ? parseFloat(ms) * 1000 : parseInt(ms);
+                        date.setHours(hour, minute, second, milliseconds);
+                        return date.getTime();
+                    } else if (match.length === 4) {
+                        const [, hour, minute, second] = match;
+                        const date = new Date();
+                        date.setHours(hour, minute, second, 0);
+                        return date.getTime();
+                    }
+                }
+            }
+
+            return NaN;
+        }
+
+        // 显示结果
+        function displayResults(file, results) {
+            const resultSection = document.getElementById('resultSection');
+            const debugSection = document.getElementById('debugSection');
+
+            // 文件信息
+            document.getElementById('fileInfo').innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <p><strong>文件名:</strong> ${file.name}</p>
+                        <p><strong>大小:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
+                        <p><strong>修改时间:</strong> ${new Date(file.lastModified).toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+
+            // 选择最佳结果
+            const bestResult = results.find(r => r.success) || results[0];
+            
+            if (bestResult.success) {
+                // Sheet列表
+                const sheetListHtml = bestResult.sheetsData.map((sheet, i) => `
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <strong>Sheet ${i + 1}: ${sheet.name}</strong>
+                            <span class="ml-2 badge bg-info">${sheet.data.length}行 × ${sheet.data[0]?.length || 0}列</span>
+                        </div>
+                    </div>
+                `).join('');
+                document.getElementById('sheetList').innerHTML = sheetListHtml;
+
+                // 原始数据预览（第一个Sheet）
+                if (bestResult.sheetsData.length > 0) {
+                    const firstSheet = bestResult.sheetsData[0];
+                    document.getElementById('rawDataPreview').innerHTML = `
+                        <p class="text-muted mb-2">显示 ${firstSheet.name} 的前5行数据:</p>
+                        ${generateTable(firstSheet.data.slice(0, 5))}
+                    `;
+                }
+
+                // 合并结果
+                if (bestResult.mergedData && bestResult.mergedData.mergedData.length > 0) {
+                    document.getElementById('mergedResult').innerHTML = `
+                        <div class="alert alert-success">${bestResult.mergedData.info}</div>
+                        <p class="text-muted mb-2">合并后数据预览（前10行）:</p>
+                        ${generateTable(bestResult.mergedData.mergedData.slice(0, 10))}
+                    `;
+                } else {
+                    document.getElementById('mergedResult').innerHTML = `
+                        <div class="alert alert-warning">${bestResult.mergedData?.info || '合并失败'}</div>
+                    `;
+                }
+            }
+
+            // 显示调试日志
+            document.getElementById('debugLog').textContent = debugLog;
+
+            resultSection.style.display = 'block';
+            debugSection.style.display = 'block';
+        }
+
+        // 生成表格
+        function generateTable(data) {
+            if (!data || data.length === 0) {
+                return '<p class="text-muted">暂无数据</p>';
+            }
+
+            let html = '<table class="table table-bordered table-striped table-sm">';
+            html += '<thead><tr>';
+            data[0].forEach((cell, i) => {
+                html += `<th style="min-width: 100px;">${String(cell).substring(0, 30)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            data.slice(1).forEach(row => {
+                html += '<tr>';
+                row.forEach(cell => {
+                    const cellStr = String(cell);
+                    html += `<td>${cellStr.substring(0, 50)}${cellStr.length > 50 ? '...' : ''}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            return html;
+        }
+    </script>
+</body>
+</html>

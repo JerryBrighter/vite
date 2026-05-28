@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>测试图表</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div style="width: 800px; height: 400px;">
+    <canvas id="testChart"></canvas>
+  </div>
+  
+  <script>
+    // 测试数据
+    const labels = ['00:45:49:000', '00:45:49:050', '00:45:49:100', '00:45:49:150', '00:45:49:200'];
+    const data = [0.008, 0.008, 0.009, 0.008, 0.007];
+    
+    // 创建图表
+    const ctx = document.getElementById('testChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '测试数据',
+          data: data,
+          borderColor: 'blue',
+          backgroundColor: 'rgba(0, 0, 255, 0.1)',
+          borderWidth: 2,
+          tension: 0.2,
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
