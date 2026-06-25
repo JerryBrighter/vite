@@ -86,7 +86,7 @@
         <ul class="feature-list">
           <li>支持CSV、DAT、TXT和Excel文件格式</li>
           <li>支持自动检测和手动选择文件编码</li>
-          <li>支持Excel文件的多个Sheet选择</li>
+          <li>支持Excel文件的多个Sheet选择和合并</li>
           <li>支持TAB、逗号和空格作为分隔符</li>
           <li>支持TXT文件的特殊格式：TAB分隔且列名与数值用冒号分隔</li>
           <li>支持空格分隔的日期时间数据格式（如：2026-03-14 03:59:33 99.451 23.570）</li>
@@ -95,19 +95,21 @@
         <h3>2. 编码处理</h3>
         <ul class="feature-list">
           <li>自动检测文件编码（GB2312、GBK、UTF-8等）</li>
-          <li>支持手动选择编码格式，始终显示编码选择器</li>
+          <li>支持手动选择编码格式，放在文件名下方便于操作</li>
           <li>使用浏览器内置的TextDecoder API进行准确的编码转换</li>
           <li>保留备用解码方案，确保在各种浏览器环境下都能正常工作</li>
           <li>解码成功后显示解析结果，包括编码类型、数据行数等信息</li>
+          <li>数据文件和控制文件的编码选择完全独立</li>
         </ul>
         
         <h3>3. 数据处理</h3>
         <ul class="feature-list">
-          <li>自动检测和合并多行行标题，智能处理标题行</li>
+          <li>自动检测和合并多行行标题，去掉多余空格</li>
           <li>智能识别时间值和数据值，避免将数据行误识别为标题行</li>
           <li>支持零列过滤功能，可选择是否过滤全为0的列</li>
           <li>支持数据表格显示和分页，默认显示10行</li>
           <li>支持数据导出功能，可将筛选后的数据导出为CSV文件</li>
+          <li>支持原始数据模式下的时间筛选</li>
         </ul>
         
         <h3>4. 可视化功能</h3>
@@ -116,7 +118,7 @@
           <li>支持多Y轴数据同时显示，左右Y轴独立配置</li>
           <li>支持Y轴"全选"按钮，快速选择所有数据列</li>
           <li>支持Y轴"清除"按钮，快速清除所有选中项</li>
-          <li>支持调整X轴时间范围，可手动输入或使用滑块控制</li>
+          <li>支持调整X轴时间范围，可手动输入或使用现代化滑块控件</li>
           <li>支持导出图表为图片</li>
         </ul>
         
@@ -126,6 +128,14 @@
           <li>可选择筛选起始时间，默认选择第一个有效时间</li>
           <li>筛选数据文件中所选时间+15分钟范围内的数据</li>
           <li>筛选后自动设置X轴范围输入框的值</li>
+          <li>原始数据模式下也应用时间筛选</li>
+        </ul>
+        
+        <h3>6. 开发规范</h3>
+        <ul class="feature-list">
+          <li>内置dev-standard开发规范SKILL</li>
+          <li>代码备份、需求文档修订、功能测试、版本维护一体化流程</li>
+          <li>支持Git和压缩归档两种备份方式</li>
         </ul>
       </div>
       
@@ -133,14 +143,14 @@
         <h2>如何使用</h2>
         <ol class="step-list">
           <li><strong>上传数据文件</strong>：点击左侧的"数据文件导入"区域，上传DemDec格式的数据文件</li>
-          <li><strong>选择编码</strong>：系统会自动检测文件编码，如需调整可在编码选择器中选择正确的编码格式</li>
-          <li><strong>选择Excel工作表</strong>：如果上传的是Excel文件，可以选择要解析的工作表</li>
+          <li><strong>选择编码</strong>：系统会自动检测文件编码，如需调整可在文件名下方的编码选择器中选择正确的编码格式</li>
+          <li><strong>选择Excel工作表</strong>：如果上传的是Excel文件，可以选择要解析的工作表或合并多个Sheet</li>
           <li><strong>配置坐标轴</strong>：在"折线图坐标轴配置"区域选择X轴和Y轴，可使用"全选"按钮快速选择所有数据列</li>
           <li><strong>绘制图表</strong>：点击"绘制折线图"按钮生成图表</li>
-          <li><strong>调整时间范围</strong>：可以使用X轴范围调整功能或滑块来缩放图表</li>
+          <li><strong>调整时间范围</strong>：使用现代化滑块控件调整X轴范围来缩放图表，支持悬停显示数值标签</li>
           <li><strong>导出图表</strong>：点击"导出图表为图片"按钮保存图表</li>
-          <li><strong>导出数据</strong>：点击"数据导出"按钮将筛选后的数据导出为CSV文件</li>
-          <li><strong>时间筛选</strong>：如果需要按时间筛选，可以上传DemControl时间筛选文件并选择起始时间</li>
+          <li><strong>导出数据</strong>：点击"数据导出"按钮将筛选后的数据导出为CSV文件，文件名不包含毫秒但数据内容保留毫秒</li>
+          <li><strong>时间筛选</strong>：如果需要按时间筛选，可以上传DemControl时间筛选文件并选择起始时间，原始数据模式下也应用时间筛选</li>
         </ol>
       </div>
       
@@ -169,6 +179,56 @@
       
       <div class="section">
         <h2>版本更新记录</h2>
+        
+        <h3>1.8.0 - 2026-06-25</h3>
+        <h4>代码重构优化</h4>
+        <ul class="feature-list">
+          <li>重构了drawChart()函数，将其拆分为多个职责单一的函数</li>
+          <li>提取了输入验证、Canvas设置、数据处理、图表配置等功能模块</li>
+          <li>提高了代码的可维护性、可测试性和可复用性</li>
+          <li>主函数代码从300+行减少到约100行</li>
+        </ul>
+        
+        <h4>滑块UI美化</h4>
+        <ul class="feature-list">
+          <li>重新设计了X轴范围拖动条的外观</li>
+          <li>采用圆形滑块手柄设计，符合现代UI风格</li>
+          <li>使用渐变色彩方案（紫色到粉色）</li>
+          <li>添加精致的阴影和光泽效果，增强立体感</li>
+          <li>实现悬停放大动画，提升交互反馈</li>
+          <li>添加刻度标记，提供视觉参考</li>
+          <li>实现数值标签悬停显示功能</li>
+          <li>完全响应式设计，适配各种屏幕尺寸</li>
+        </ul>
+        
+        <h4>功能增强</h4>
+        <ul class="feature-list">
+          <li>xlsx库本地化：将xlsx库从CDN改为本地文件，提高离线可用性</li>
+          <li>原始数据时间筛选：原始数据模式下也应用时间筛选</li>
+          <li>多行字段合并：去掉多余空格</li>
+          <li>布局优化：手动选择编码放在文件名下方</li>
+        </ul>
+        
+        <h4>开发规范</h4>
+        <ul class="feature-list">
+          <li>添加了dev-standard开发规范SKILL</li>
+          <li>实现代码备份、需求文档修订、功能测试、版本维护一体化流程</li>
+          <li>支持Git和压缩归档两种备份方式</li>
+        </ul>
+        
+        <h4>依赖优化</h4>
+        <ul class="feature-list">
+          <li>更新electron版本到^35.0.0</li>
+          <li>更新electron-builder版本到^26.0.0</li>
+          <li>配置国内镜像源（npmmirror.com）</li>
+        </ul>
+        
+        <h3>1.7.4 - 2026-05-27</h3>
+        <h4>功能优化</h4>
+        <ul class="feature-list">
+          <li>导出文件名优化：文件名不包含毫秒，但数据内容保留毫秒</li>
+          <li>控制文件独立手动编码选择：两个文件的编码选择完全独立</li>
+        </ul>
         
         <h3>1.4.0 - 2026-03-11</h3>
         <h4>新增功能</h4>
@@ -252,14 +312,20 @@
       
       <div class="section">
         <h2>运行方式</h2>
-        <ol class="step-list">
-          <li>
-            <strong>本地运行</strong>：在项目目录下启动本地服务器
-            <pre class="bg-light p-3 rounded">python -m http.server 8000</pre>
-            然后在浏览器中访问 http://localhost:8000
-          </li>
-          <li><strong>在线访问</strong>：访问部署在GitHub Pages上的版本</li>
-        </ol>
+        
+        <h4>开发模式</h4>
+        <pre class="bg-light p-3 rounded">npm install
+npm run dev</pre>
+        然后在浏览器中访问 http://localhost:5173
+        
+        <h4>生产构建</h4>
+        <pre class="bg-light p-3 rounded">npm run build</pre>
+        
+        <h4>预览构建结果</h4>
+        <pre class="bg-light p-3 rounded">npm run preview</pre>
+        
+        <h4>部署到GitHub Pages</h4>
+        <pre class="bg-light p-3 rounded">npm run deploy:github</pre>
       </div>
       
       <div class="section">
@@ -271,6 +337,7 @@
           <li>Excel文件的解析依赖于xlsx.js库，较大的Excel文件可能需要更长的解析时间</li>
           <li>TXT文件支持TAB分隔且列名与数值用冒号分隔的格式，如"时间	列名1:值1	列名2:值2"</li>
           <li>支持空格分隔的日期时间数据格式，如"2026-03-14 03:59:33 99.451 23.570"</li>
+          <li>项目已配置国内npm镜像源（npmmirror.com），可提高依赖安装速度</li>
         </ul>
       </div>
       
