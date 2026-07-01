@@ -389,6 +389,20 @@ function createChartConfig(labels, datasets, xIndex, axisRange) {
         legend: {
           display: false
         },
+        title: {
+          display: true,
+          text: currentFileName ? currentFileName.replace(/\.[^/.]+$/, '') : '可视化图表',
+          font: {
+            size: 16,
+            weight: 'bold',
+            family: "'Microsoft YaHei', sans-serif"
+          },
+          color: '#333',
+          padding: {
+            top: 10,
+            bottom: 20
+          }
+        },
         tooltip: {
           mode: 'index',
           intersect: false,
@@ -615,34 +629,112 @@ function autoTimeRange() {
  * // 当用户点击导出图表按钮时调用
  * elements.exportChartBtn.addEventListener('click', exportChart);
  */
-function exportChart() {
+async function exportChart() {
   if (!currentChart) {
     updateStatus('⚠️ 请先绘制图表');
     return;
   }
   
   try {
+    const originalLegendDisplay = currentChart.options.plugins.legend.display;
+    const originalTitleDisplay = currentChart.options.plugins.title.display;
+    const originalHeight = elements.lineChart.height;
+    
+    currentChart.options.plugins.legend.display = true;
+    currentChart.options.plugins.legend.position = 'bottom';
+    currentChart.options.plugins.legend.labels = {
+      usePointStyle: true,
+      padding: 15,
+      font: {
+        family: "'Microsoft YaHei', sans-serif",
+        size: 11
+      }
+    };
+    currentChart.options.plugins.title.display = false;
+    currentChart.update('none');
+    
+    const legendHeight = 60;
+    const exportHeight = originalHeight + legendHeight;
+    
     const canvas = document.createElement('canvas');
     canvas.width = elements.lineChart.width * 3.125;
-    canvas.height = elements.lineChart.height * 3.125;
+    canvas.height = exportHeight * 3.125;
     
     const ctx = canvas.getContext('2d');
     ctx.scale(3.125, 3.125);
     ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, elements.lineChart.width, elements.lineChart.height);
+    ctx.fillRect(0, 0, elements.lineChart.width, exportHeight);
+    
+    elements.lineChart.height = exportHeight;
+    currentChart.resize();
+    currentChart.render({ duration: 0 });
+    currentChart.draw();
+    
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     ctx.drawImage(elements.lineChart, 0, 0);
     
+    elements.lineChart.height = originalHeight;
+    currentChart.resize();
+    
     const dataUrl = canvas.toDataURL('image/jpeg', 1);
+    
+    currentChart.options.plugins.legend.display = originalLegendDisplay;
+    currentChart.options.plugins.legend.position = 'right';
+    currentChart.options.plugins.legend.labels = {
+      usePointStyle: false,
+      padding: 10,
+      font: {
+        family: "'Microsoft YaHei', sans-serif",
+        size: 11
+      }
+    };
+    currentChart.options.plugins.title.display = originalTitleDisplay;
+    currentChart.update('none');
+    
     const link = document.createElement('a');
     link.href = dataUrl;
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    link.download = `DemDec可视化图表_${timestamp}.jpg`;
+    
+    let fileName = '可视化图表';
+    if (currentFileName) {
+      fileName = currentFileName.replace(/\.[^/.]+$/, '');
+    }
+    
+    if (filteredData.length > 0) {
+      const firstTime = filteredData[0][0];
+      const lastTime = filteredData[filteredData.length - 1][0];
+      
+      const firstParsed = parseTime(firstTime);
+      const lastParsed = parseTime(lastTime);
+      
+      if (!isNaN(firstParsed) && !isNaN(lastParsed)) {
+        const formatTimeForFileName = (date) => {
+          const d = new Date(date);
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          const hours = String(d.getHours()).padStart(2, '0');
+          const minutes = String(d.getMinutes()).padStart(2, '0');
+          const seconds = String(d.getSeconds()).padStart(2, '0');
+          return `${year}-${month}-${day}T${hours}-${minutes}-${seconds}`;
+        };
+        
+        fileName = `${fileName}_${formatTimeForFileName(firstParsed)}_至_${formatTimeForFileName(lastParsed)}`;
+      }
+    }
+    
+    link.download = `${fileName}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    updateStatus('✅ 图表已成功导出为300dpi白色背景的JPG图片');
+    updateStatus('✅ 图表已导出（含图例），分辨率为300dpi');
   } catch (error) {
+    if (currentChart) {
+      currentChart.options.plugins.legend.display = originalLegendDisplay;
+      currentChart.options.plugins.title.display = originalTitleDisplay;
+      currentChart.update('none');
+    }
     updateStatus(`❌ 图表导出失败：${error.message}`);
     console.error('导出错误详情：', error);
   }

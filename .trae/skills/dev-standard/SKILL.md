@@ -1,13 +1,18 @@
 ---
 name: "dev-standard"
-description: "TRAE开发规范SKILL：代码备份、需求文档修订、功能测试、版本维护。每次修改前自动备份代码，修订需求文档，使用测试数据验证功能，完成后维护版本和说明文档。"
+description: "TRAE开发规范SKILL：代码备份、需求文档修订、功能测试、版本维护。每次修改前自动备份代码，修订需求文档，使用测试数据验证功能，发布前必须获得用户确认。作为基础规范被task-organizer、code-writer、code-reviewer三个角色SKILL引用。"
 ---
 
 # TRAE开发规范
 
 ## 概述
 
-本SKILL定义了TRAE开发的标准工作流程，确保代码变更的可追溯性、可回退性和质量保证。
+本SKILL定义了TRAE开发的标准工作流程，确保代码变更的可追溯性、可回退性和质量保证。**关键原则：不允许TRAE自行决定发布，每次发布到GitHub之前必须通过交互获得用户确认。**
+
+本SKILL作为基础规范，被以下三个角色SKILL共同引用：
+- **task-organizer**：负责任务组织和管理，输出结构化任务清单
+- **code-writer**：负责代码编写和实现，遵循备份和测试流程
+- **code-reviewer**：负责代码审核和质量保障，确保代码达到生产标准
 
 ## 工作流程
 
@@ -100,7 +105,7 @@ Compress-Archive -Path "src","assets","lib","*.json","*.md","*.html" -Destinatio
 
 #### 3.1 测试数据准备
 
-- 创建测试数据目录：`.trae/test-data/`
+- 创建测试数据目录：`data4test/`
 - 测试数据应覆盖：
   - 正常场景
   - 边界条件
@@ -162,7 +167,121 @@ yarn test
 
 #### 4.3 使用说明修订
 
-根据新增功能，更新README.md中的使用说明部分。
+根据新增功能，更新README.md和usage.html中的使用说明部分。
+
+### 5. 发布确认阶段（关键步骤）
+
+**⚠️ 重要原则：不允许TRAE自行决定发布。**
+
+在执行任何发布操作之前，必须通过交互获得用户确认。
+
+#### 5.1 发布前检查清单
+
+在请求用户确认之前，必须完成以下检查：
+
+- [ ] 代码已备份
+- [ ] 需求文档已更新
+- [ ] 测试数据已准备
+- [ ] 功能测试已通过
+- [ ] 版本号已更新（所有文件一致）
+- [ ] 更新记录已添加
+- [ ] 使用说明已修订
+- [ ] 构建成功（npm run build 通过）
+- [ ] 代码审核已通过（code-reviewer SKILL）
+
+#### 5.2 发布确认流程
+
+**步骤1：汇总发布信息**
+
+向用户展示以下信息：
+
+```
+📋 发布确认
+
+版本号：v<版本号>
+发布日期：YYYY-MM-DD
+
+修改的文件：
+- <文件1>
+- <文件2>
+- <文件3>
+
+更新内容：
+- <更新内容1>
+- <更新内容2>
+- <更新内容3>
+
+是否确认发布到GitHub？
+```
+
+**步骤2：使用AskUserQuestion工具确认**
+
+必须使用AskUserQuestion工具获得用户明确确认后才能执行发布操作。
+
+**步骤3：执行发布**
+
+获得用户确认后，执行以下操作：
+
+```bash
+# 提交代码
+git add .
+git commit -m "v<版本号>: <更新描述>"
+
+# 推送到main分支
+git push origin main
+
+# 构建项目
+npm run build
+
+# 部署到GitHub Pages
+npx gh-pages -d dist -f
+```
+
+#### 5.3 禁止的操作
+
+以下操作必须获得用户明确授权，严禁自行执行：
+
+- ❌ 禁止自行执行 `git push` 命令
+- ❌ 禁止自行执行 `gh-pages` 部署命令
+- ❌ 禁止使用 `-f` 或 `--force` 参数进行强制推送
+- ❌ 禁止删除远程分支
+- ❌ 禁止修改GitHub仓库配置
+
+#### 5.4 发布失败处理
+
+如果发布失败：
+
+1. 向用户报告错误信息
+2. 分析失败原因
+3. 提出解决方案
+4. 等待用户确认后再重试
+
+## 开发流程整合
+
+### 完整开发流水线
+
+```
+用户需求 → task-organizer → code-writer → code-reviewer → dev-standard → 用户确认 → 发布
+              ↓                ↓                ↓                ↓
+          需求分析          代码编写          代码审核          版本维护
+          任务拆分          功能测试          质量保障          发布确认
+```
+
+### 各阶段职责
+
+| 阶段 | SKILL | 职责 | 输出 |
+|------|-------|------|------|
+| 1. 任务组织 | task-organizer | 需求分析、任务拆分、优先级排序 | 任务清单 |
+| 2. 代码编写 | code-writer | 代码实现、功能测试、代码提交 | 代码实现 |
+| 3. 代码审核 | code-reviewer | 代码审查、问题反馈、质量保障 | 审核报告 |
+| 4. 版本维护 | dev-standard | 版本更新、文档修订、发布确认 | 发布版本 |
+
+### 协作协议
+
+1. **task-organizer → code-writer**：输出结构化任务清单，code-writer按清单执行
+2. **code-writer → code-reviewer**：提交代码和测试报告，code-reviewer进行审核
+3. **code-reviewer → code-writer**：输出审核报告和问题清单，code-writer修复问题
+4. **所有SKILL → dev-standard**：遵循备份、测试、发布确认流程
 
 ## 开发检查清单
 
@@ -175,6 +294,9 @@ yarn test
 - [ ] 版本号已更新
 - [ ] 更新记录已添加
 - [ ] 使用说明已修订
+- [ ] 构建成功
+- [ ] 代码审核已通过
+- [ ] **获得用户发布确认**
 
 ## 异常处理
 
@@ -194,6 +316,23 @@ yarn test
 2. 修复代码
 3. 重新测试
 4. 如果多次失败，考虑回退到备份版本
+
+### 审核失败
+
+如果代码审核失败：
+
+1. 根据审核报告修复问题
+2. 重新提交审核
+3. 确保所有严重问题已解决
+
+### 发布失败
+
+如果发布失败：
+
+1. 向用户报告错误信息
+2. 分析失败原因
+3. 提出解决方案
+4. 等待用户确认后再重试
 
 ### 回退操作
 
@@ -217,6 +356,8 @@ Expand-Archive -Path ".trae/backups/<backup-file>.zip" -DestinationPath "." -For
 3. **文档同步**：代码和文档保持同步更新
 4. **测试先行**：先编写测试用例，再实现功能
 5. **定期备份**：即使没有修改，也建议定期备份
+6. **确认发布**：发布前必须获得用户明确确认
+7. **角色分离**：不同SKILL负责不同职责，确保关注点分离
 
 ## 附录
 
@@ -237,6 +378,12 @@ Compress-Archive -Path "src","assets","*.json" -DestinationPath ".trae/backups/b
 
 # 解压备份（PowerShell）
 Expand-Archive -Path ".trae/backups/<backup-file>.zip" -DestinationPath "." -Force
+
+# 构建项目
+npm run build
+
+# 预览构建结果
+npm run preview
 ```
 
 ### 目录结构
@@ -244,10 +391,20 @@ Expand-Archive -Path ".trae/backups/<backup-file>.zip" -DestinationPath "." -For
 ```
 .trae/
 ├── skills/
-│   └── dev-standard/
+│   ├── dev-standard/
+│   │   └── SKILL.md
+│   ├── task-organizer/
+│   │   └── SKILL.md
+│   ├── code-writer/
+│   │   └── SKILL.md
+│   └── code-reviewer/
 │       └── SKILL.md
 ├── documents/
 │   └── <feature-name>-requirement.md
+├── tasks/
+│   └── <version>-task-list.md
+├── reviews/
+│   └── <task-id>-review-report.md
 ├── test-data/
 │   └── <test-data-files>
 └── backups/

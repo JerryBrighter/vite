@@ -14,28 +14,31 @@
  * parseTime('00:00:00.044'); // 返回时间戳
  */
 function parseTime(timeStr) {
-  // 尝试直接解析
+  if (!timeStr || typeof timeStr !== 'string') {
+    return NaN;
+  }
+  
   const date = new Date(timeStr);
   if (!isNaN(date.getTime())) {
     return date.getTime();
   }
   
-  // 尝试不同的时间格式
   const patterns = [
     /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
     /^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
     /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
     /^(\d{4})\/(\d{2})\/(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
     /^(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/, 
-    /^(\d{2}):(\d{2}):(\d{2}):(\d{3})$/, // 支持 00:45:49:000 格式
+    /^(\d{2}):(\d{2}):(\d{2}):(\d{3})$/,
     /^(\d{4})-(\d{2})-(\d{2})$/, 
-    /^(\d{4})\/(\d{2})\/(\d{2})$/  ];
+    /^(\d{4})\/(\d{2})\/(\d{2})$/,
+    /^(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{3})$/, 
+    /^(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$/  ];
   
   for (const pattern of patterns) {
     const match = timeStr.match(pattern);
     if (match) {
       if (match.length === 8) {
-        // 完整日期时间（带毫秒）
         const [, year, month, day, hour, minute, second, ms] = match;
         const milliseconds = ms ? parseFloat(ms) * 1000 : 0;
         const date = new Date(year, month - 1, day, hour, minute, second, milliseconds);
@@ -43,21 +46,17 @@ function parseTime(timeStr) {
           return date.getTime();
         }
       } else if (match.length === 7) {
-        // 完整日期时间（不带毫秒）
         const [, year, month, day, hour, minute, second] = match;
         const date = new Date(year, month - 1, day, hour, minute, second);
         if (!isNaN(date.getTime())) {
           return date.getTime();
         }
       } else if (match.length === 5 && match[0].includes(':')) {
-        // 只有时间（带毫秒）
         const [, hour, minute, second, ms] = match;
         let milliseconds;
         if (ms.startsWith('.')) {
-          // 格式：00:45:49.000
           milliseconds = parseFloat(ms) * 1000;
         } else {
-          // 格式：00:45:49:000
           milliseconds = parseInt(ms);
         }
         const date = new Date();
@@ -66,7 +65,6 @@ function parseTime(timeStr) {
           return date.getTime();
         }
       } else if (match.length === 4) {
-        // 只有时间（不带毫秒）
         const [, hour, minute, second] = match;
         const date = new Date();
         date.setHours(hour, minute, second, 0);
@@ -74,7 +72,6 @@ function parseTime(timeStr) {
           return date.getTime();
         }
       } else if (match.length === 5 && !match[0].includes(':')) {
-        // 只有日期
         const [, year, month, day] = match;
         const date = new Date(year, month - 1, day);
         if (!isNaN(date.getTime())) {
@@ -333,13 +330,22 @@ function parseCSVContent(lines) {
   
   if (firstLine.includes('\t')) {
     const cells = firstLine.split('\t');
-    // 检查除第一列外的其他列是否包含冒号
+    let keyValueCount = 0;
     for (let i = 1; i < cells.length; i++) {
-      if (cells[i].includes(':')) {
-        hasHeader = true;
-        break;
+      const cell = cells[i].trim();
+      if (cell.includes(':')) {
+        const colonIndex = cell.indexOf(':');
+        const beforeColon = cell.substring(0, colonIndex).trim();
+        const afterColon = cell.substring(colonIndex + 1).trim();
+        if (beforeColon && afterColon && 
+            !beforeColon.match(/^\d{4}-\d{2}-\d{2}$/) && 
+            !beforeColon.match(/^\d{2}:\d{2}:\d{2}/) &&
+            !cell.match(/^\d{4}-\d{2}-\d{2}T/)) {
+          keyValueCount++;
+        }
       }
     }
+    hasHeader = keyValueCount >= 2;
   }
   
   if (hasHeader) {
@@ -379,7 +385,6 @@ function parseCSVContent(lines) {
     const isSpaceSeparated = detectSpaceSeparatedFormat(firstLine);
     
     if (isSpaceSeparated) {
-       // 空格分隔的格式：解析所有行
        const firstParts = firstLine.trim().split(/\s+/);
        const numCols = firstParts.length;
        headerRow = ['时间'];
@@ -388,15 +393,11 @@ function parseCSVContent(lines) {
        }
        data.push(headerRow);
        
-       // 处理数据行
        processedLines.forEach(line => {
          const parts = line.trim().split(/\s+/);
-         if (parts.length >= 2) {
-           // 第一部分是日期，第二部分是时间，合并为完整的日期时间
-           const dateTime = `${parts[0]} ${parts[1]}`;
-           const row = [dateTime];
-           // 添加后续的数据列
-           for (let i = 2; i < parts.length; i++) {
+         if (parts.length >= 1) {
+           const row = [];
+           for (let i = 0; i < parts.length; i++) {
              row.push(parts[i]);
            }
            data.push(row);
@@ -430,27 +431,35 @@ function parseCSVContent(lines) {
  */
 function detectSpaceSeparatedFormat(line) {
   const trimmed = line.trim();
-  // 使用空格分割
   const parts = trimmed.split(/\s+/);
   
-  // 至少需要3列（日期、时间、至少一个数据）
   if (parts.length < 3) return false;
   
-  // 检查第一部分是否是日期格式（年-月-日）
+  const firstPart = parts[0];
+  
   const datePattern = /^\d{4}-\d{1,2}-\d{1,2}$/;
-  if (!datePattern.test(parts[0])) return false;
+  const underscoreTimePattern = /^(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})(_\d{3})?$/;
   
-  // 检查第二部分是否是时间格式（时:分:秒）
+  if (!datePattern.test(firstPart) && !underscoreTimePattern.test(firstPart)) return false;
+  
   const timePattern = /^\d{1,2}:\d{1,2}:\d{1,2}(\.\d+)?$/;
-  if (!timePattern.test(parts[1])) return false;
+  const isoTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/;
   
-  // 检查后续部分是否都是数值
+  if (!timePattern.test(parts[1]) && !isoTimePattern.test(parts[1])) return false;
+  
+  let numericCount = 0;
+  let nonNumericCount = 0;
+  
   for (let i = 2; i < parts.length; i++) {
     const num = parseFloat(parts[i]);
-    if (isNaN(num)) return false;
+    if (!isNaN(num)) {
+      numericCount++;
+    } else {
+      nonNumericCount++;
+    }
   }
   
-  return true;
+  return numericCount >= 1;
 }
 
 /**

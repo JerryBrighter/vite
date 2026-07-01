@@ -644,12 +644,16 @@ function processDataFile(data, encoding) {
     });
     newOriginalData = data.slice(1).filter(row => row.length > 0);
   } else {
-    // 检查第二行第一列是否为时间格式（用于判断第一行是否为表头）
+    // 检查第一行第一列是否为时间格式（用于判断是否有标题行）
+    const firstRowFirstCell = data[0] ? String(data[0][0]).trim() : '';
+    const isFirstRowTime = !isNaN(parseTime(firstRowFirstCell));
+    
+    // 检查第二行第一列是否为时间格式
     const hasDataHeader = data.length >= 2 && data[1] && data[1][0];
     const firstDataCell = hasDataHeader ? String(data[1][0]).trim() : '';
     const isTimeFormat = !isNaN(parseTime(firstDataCell));
     
-    if (isTimeFormat) {
+    if (isTimeFormat && !isFirstRowTime) {
       // 第一行是表头，第二行开始是数据
       newHeaders = data[0].map((cell, index) => {
         const cellStr = String(cell).trim();
@@ -660,7 +664,7 @@ function processDataFile(data, encoding) {
       });
       newOriginalData = data.slice(1).filter(row => row.length > 0);
     } else {
-      // 普通CSV格式，没有标题行，需要创建默认标题
+      // 无标题行（第一行也是数据），需要创建默认标题
       newHeaders = [];
       const firstRowLength = data[0] ? data[0].length : 0;
       for (let i = 0; i < firstRowLength; i++) {
@@ -693,6 +697,10 @@ function processDataFile(data, encoding) {
   }
   
   // 更新全局变量
+  console.log('[DEBUG] processDataFile - finalHeaders:', finalHeaders);
+  console.log('[DEBUG] processDataFile - newOriginalData行数:', newOriginalData.length);
+  console.log('[DEBUG] processDataFile - newFilteredData行数:', newFilteredData.length);
+  console.log('[DEBUG] processDataFile - hasHeader:', hasHeader, 'isExcel:', isExcel);
   updateVariables({
     rawData: savedRawData,
     rawHeaders: savedRawHeaders,

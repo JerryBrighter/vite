@@ -17,6 +17,11 @@ lerna-debug.log*
 # Test files
 test-*.js
 test-*.html
+test-*.cjs
+test-report.json
+test-report.html
+test-agent.js
+debug-yaxis.py
 
 node_modules
 dist
