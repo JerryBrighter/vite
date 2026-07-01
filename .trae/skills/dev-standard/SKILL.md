@@ -146,13 +146,47 @@ yarn test
 
 #### 4.1 版本更新
 
+**⚠️ 关键要求：必须更新所有版本号标识，确保一致性。**
+
 更新以下文件的版本号：
 
-1. `package.json` - 版本字段
-2. `index.html` - meta version标签
-3. `README.md` - 更新记录
+| 文件 | 位置 | 更新内容 |
+|------|------|----------|
+| `package.json` | `version` 字段 | `"version": "1.8.1"` |
+| `index.html` | `<meta name="version">` | `content="1.8.1"` |
+| `index.html` | 页面底部版本信息 | `版本：1.8.1 | 更新日期：YYYY-MM-DD` |
+| `README.md` | 更新记录部分 | 添加新版本更新记录 |
+| `CHANGELOG.md` | 更新记录部分 | 添加新版本更新记录 |
+| `DESIGN_REQUIREMENTS.md` | 版本历史表格 | 添加新版本条目 |
+| `DESIGN_REQUIREMENTS.md` | 文档版本信息 | 更新文档版本和适用版本 |
 
-#### 4.2 更新记录格式
+#### 4.2 版本号一致性检查
+
+**发布前必须执行版本号一致性检查！**
+
+```bash
+# 检查所有版本号是否一致
+echo "=== 版本号一致性检查 ==="
+
+# 检查package.json
+echo "package.json: $(cat package.json | grep -o '"version": "[^"]*"' | cut -d'"' -f4)"
+
+# 检查index.html meta版本
+echo "index.html (meta): $(grep -o 'content="[0-9]*\.[0-9]*\.[0-9]*"' index.html | head -1 | cut -d'"' -f2)"
+
+# 检查index.html 底部版本
+echo "index.html (footer): $(grep -o '版本：[0-9]*\.[0-9]*\.[0-9]*' index.html | cut -d'：' -f2)"
+
+# 检查README.md最新版本
+echo "README.md: $(grep -o '\[1\.[0-9]*\.[0-9]*\]' README.md | head -1 | tr -d '[]')"
+
+# 检查CHANGELOG.md最新版本
+echo "CHANGELOG.md: $(grep -o '\[1\.[0-9]*\.[0-9]*\]' CHANGELOG.md | head -1 | tr -d '[]')"
+```
+
+**检查标准**：所有版本号必须完全一致，否则禁止发布！
+
+#### 4.3 更新记录格式
 
 在README.md中添加更新记录：
 
@@ -165,7 +199,41 @@ yarn test
 - <更新内容3>
 ```
 
-#### 4.3 使用说明修订
+在CHANGELOG.md中添加更新记录：
+
+```markdown
+## [<版本号>] - YYYY-MM-DD
+
+### 功能增强
+- <更新内容1>
+
+### 修复问题
+- <更新内容2>
+
+### 测试框架
+- <更新内容3>
+
+### 开发规范
+- <更新内容4>
+```
+
+在DESIGN_REQUIREMENTS.md中更新版本历史表格：
+
+```markdown
+| 版本 | 日期 | 主要更新 |
+| :--- | :--- | :--- |
+| <版本号> | YYYY-MM-DD | <更新摘要> |
+```
+
+并更新文档版本信息：
+
+```markdown
+**文档版本**: vX.Y  
+**生成日期**: YYYY-MM-DD  
+**适用版本**: CSV可视化工具 v<版本号>
+```
+
+#### 4.4 使用说明修订
 
 根据新增功能，更新README.md和usage.html中的使用说明部分。
 
@@ -183,7 +251,14 @@ yarn test
 - [ ] 需求文档已更新
 - [ ] 测试数据已准备
 - [ ] 功能测试已通过
-- [ ] 版本号已更新（所有文件一致）
+- [ ] **版本号已更新（所有文件一致）**
+  - [ ] `package.json` version字段
+  - [ ] `index.html` meta version标签
+  - [ ] `index.html` 页面底部版本信息
+  - [ ] `README.md` 更新记录
+  - [ ] `CHANGELOG.md` 更新记录
+  - [ ] `DESIGN_REQUIREMENTS.md` 版本历史和文档版本信息
+- [ ] **版本号一致性检查已通过**
 - [ ] 更新记录已添加
 - [ ] 使用说明已修订
 - [ ] 构建成功（npm run build 通过）
@@ -291,7 +366,14 @@ npx gh-pages -d dist -f
 - [ ] 需求文档已更新
 - [ ] 测试数据已准备
 - [ ] 功能测试已通过
-- [ ] 版本号已更新
+- [ ] **版本号已更新（所有文件一致）**
+  - [ ] `package.json`
+  - [ ] `index.html` (meta)
+  - [ ] `index.html` (footer)
+  - [ ] `README.md`
+  - [ ] `CHANGELOG.md`
+  - [ ] `DESIGN_REQUIREMENTS.md`
+- [ ] **版本号一致性检查已通过**
 - [ ] 更新记录已添加
 - [ ] 使用说明已修订
 - [ ] 构建成功
