@@ -388,16 +388,17 @@ function parseCSVContent(lines) {
        const firstParts = firstLine.trim().split(/\s+/);
        const numCols = firstParts.length;
        headerRow = ['时间'];
-       for (let i = 1; i < numCols; i++) {
-         headerRow.push(`列${i}`);
+       for (let i = 2; i < numCols; i++) {
+         headerRow.push(`列${i - 1}`);
        }
        data.push(headerRow);
        
        processedLines.forEach(line => {
          const parts = line.trim().split(/\s+/);
-         if (parts.length >= 1) {
+         if (parts.length >= 2) {
            const row = [];
-           for (let i = 0; i < parts.length; i++) {
+           row.push(`${parts[0]} ${parts[1]}`);
+           for (let i = 2; i < parts.length; i++) {
              row.push(parts[i]);
            }
            data.push(row);
