@@ -1049,6 +1049,8 @@ function updateTable() {
   
   // 更新分页信息
   elements.pageInfo.textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
+  elements.firstPageBtn.disabled = currentPage === 1;
+  elements.lastPageBtn.disabled = currentPage === totalPages;
   elements.prevPageBtn.disabled = currentPage === 1;
   elements.nextPageBtn.disabled = currentPage === totalPages;
 }

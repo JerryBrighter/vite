@@ -5,7 +5,7 @@
  * 表格显示切换等功能。
  */
 
-import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, currentPage, itemsPerPage, currentFileName, currentFileEncoding, currentFileDate, detectedDate, updateVariables, getToggleLineEnabled, getEqualAxisEnabled } from './config.js';
+import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, currentPage, itemsPerPage, currentFileName, currentFileEncoding, currentFileDate, detectedDate, previousTimeRangeStart, previousTimeRangeEnd, updateVariables, getToggleLineEnabled, getEqualAxisEnabled } from './config.js';
 import { parseTime, formatDateTime, normalizeTime, updateStatus } from './utils.js';
 import { updateUIAfterDataLoad, updateTable } from './fileHandler.js';
 
@@ -559,23 +559,35 @@ function applyTimeRange() {
   const startTimestamp = new Date(startTime).getTime();
   const endTimestamp = new Date(endTime).getTime();
   
+  const isStartUpdated = startTime !== previousTimeRangeStart;
+  const isEndUpdated = endTime !== previousTimeRangeEnd;
+  
+  let finalStartTime = startTime;
+  let finalEndTime = endTime;
+  let finalStartTimestamp = startTimestamp;
+  let finalEndTimestamp = endTimestamp;
+  
+  if (isStartUpdated && startTimestamp > endTimestamp) {
+    finalEndTimestamp = startTimestamp + 15 * 60 * 1000;
+    finalEndTime = formatDateTime(finalEndTimestamp);
+    elements.timeRangeEnd.value = finalEndTime;
+  }
+  
   const newFilteredData = originalData.filter(row => {
     const rowTime = parseTime(row[xIndex]);
-    return !isNaN(rowTime) && rowTime >= startTimestamp && rowTime <= endTimestamp;
+    return !isNaN(rowTime) && rowTime >= finalStartTimestamp && rowTime <= finalEndTimestamp;
   });
   
-  // 更新全局变量
   updateVariables({
-    filteredData: newFilteredData
+    filteredData: newFilteredData,
+    previousTimeRangeStart: finalStartTime,
+    previousTimeRangeEnd: finalEndTime
   });
   
-  // 更新表格和图表
   if (currentChart) {
     drawChart();
   }
   updateTable();
-  
-  // 更新拖动条位置，确保滑块范围与X轴范围一致
   initXAxisSlider();
   
   updateStatus(`✅ 已应用时间范围筛选，共 ${newFilteredData.length} 条记录`);
@@ -616,8 +628,14 @@ function autoTimeRange() {
       const lastTime = parseTime(originalData[originalData.length - 1][xIndex]);
       
       if (!isNaN(firstTime) && !isNaN(lastTime)) {
-        elements.timeRangeStart.value = formatDateTime(firstTime);
-        elements.timeRangeEnd.value = formatDateTime(lastTime);
+        const startVal = formatDateTime(firstTime);
+        const endVal = formatDateTime(lastTime);
+        elements.timeRangeStart.value = startVal;
+        elements.timeRangeEnd.value = endVal;
+        updateVariables({
+          previousTimeRangeStart: startVal,
+          previousTimeRangeEnd: endVal
+        });
       }
     }
   }

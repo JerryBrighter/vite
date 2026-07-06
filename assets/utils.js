@@ -33,7 +33,8 @@ function parseTime(timeStr) {
     /^(\d{4})-(\d{2})-(\d{2})$/, 
     /^(\d{4})\/(\d{2})\/(\d{2})$/,
     /^(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{3})$/, 
-    /^(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$/  ];
+    /^(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$/,
+    /^(\d{4})-(\d{2})-(\d{2})_(\d{2}):(\d{2}):(\d{2})(\.\d+)?$/  ];
   
   for (const pattern of patterns) {
     const match = timeStr.match(pattern);
@@ -404,6 +405,28 @@ function parseCSVContent(lines) {
            data.push(row);
          }
        });
+     } else if (isRowNumberFormat(processedLines)) {
+       const headerCells = processedLines[0].split('\t').map(cell => cell.trim());
+       headerRow = ['时间'];
+       for (let i = 2; i < headerCells.length; i++) {
+         headerRow.push(headerCells[i]);
+       }
+       data.push(headerRow);
+       
+       for (let i = 1; i < processedLines.length; i++) {
+         const line = processedLines[i];
+         if (!line || line.trim() === '') continue;
+         
+         const parts = line.split('\t').map(cell => cell.trim());
+         if (parts.length >= headerRow.length + 1) {
+           const row = [];
+           row.push(parts[1]);
+           for (let j = 2; j < parts.length; j++) {
+             row.push(parts[j]);
+           }
+           data.push(row);
+         }
+       }
      } else {
       // 普通CSV格式或TAB分隔的格式
       processedLines.forEach(line => {
@@ -420,7 +443,64 @@ function parseCSVContent(lines) {
     }
   }
   
+  if (data.length > 1) {
+    const headerLength = data[0].length;
+    while (data.length > 1) {
+      const lastRow = data[data.length - 1];
+      if (lastRow.length >= headerLength) {
+        let allCellsValid = true;
+        for (let i = 0; i < lastRow.length; i++) {
+          if (lastRow[i] === undefined || lastRow[i] === null || lastRow[i].trim() === '') {
+            allCellsValid = false;
+            break;
+          }
+        }
+        if (allCellsValid) break;
+      }
+      data.pop();
+    }
+  }
+  
   return data;
+}
+
+/**
+ * 检测是否为行序号格式（第一列是行序号，第二列是时间，TAB分隔）
+ * 格式：记录编号  时间  列1  列2  ...
+ * 例如：0  2026-06-30_17:03:15.033  TleTarck  TleTarck  ...
+ * @param {Array<string>} lines - 文件行数组
+ * @returns {boolean} 是否为行序号格式
+ */
+function isRowNumberFormat(lines) {
+  if (lines.length < 2) return false;
+  
+  const headerLine = lines[0].trim();
+  if (!headerLine.includes('\t')) return false;
+  
+  const headerCells = headerLine.split('\t').map(cell => cell.trim());
+  if (headerCells.length < 3) return false;
+  
+  const firstHeader = headerCells[0];
+  if (!firstHeader.includes('记录') && !firstHeader.includes('序号') && !firstHeader.includes('编号')) {
+    return false;
+  }
+  
+  const secondHeader = headerCells[1];
+  if (secondHeader !== '时间') return false;
+  
+  const firstDataLine = lines[1].trim();
+  if (!firstDataLine.includes('\t')) return false;
+  
+  const dataCells = firstDataLine.split('\t').map(cell => cell.trim());
+  if (dataCells.length < 3) return false;
+  
+  const firstCell = dataCells[0];
+  if (!/^\d+$/.test(firstCell)) return false;
+  
+  const secondCell = dataCells[1];
+  if (isNaN(parseTime(secondCell))) return false;
+  
+  return true;
 }
 
 /**

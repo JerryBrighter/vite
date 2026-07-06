@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSV文件可视化分析工具 | DemDec & DemControl</title>
   <!-- 版本信息 -->
-  <meta name="version" content="1.8.2">
+  <meta name="version" content="1.8.3">
   <!-- 引入外部资源 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -21,7 +21,10 @@
     <!-- 页面标题 -->
     <header class="mt-4 mb-4">
       <div class="d-flex justify-content-between align-items-center">
-        <h1 class="page-title">CSV文件可视化分析工具</h1>
+        <div>
+          <h1 class="page-title">CSV文件可视化分析工具</h1>
+          <span class="badge bg-secondary">v1.8.3</span>
+        </div>
         <div>
           <a href="./usage.html" class="btn btn-outline-primary me-2">
             📖 使用说明
@@ -41,10 +44,10 @@
           </h4>
           <div class="file-upload-area" id="dataFileUploadArea" style="position: relative; cursor: pointer; padding: 20px; min-height: 120px;">
 			<!-- DemDec文件输入框 -->
-				<input type="file" id="demDecFileInput" accept=".csv,.dat,.txt,.xlsx,.xls" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
+				<input type="file" id="demDecFileInput" accept=".csv,.dat,.txt,.log,.xlsx,.xls" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
 				<div style="position: relative; z-index: 1; pointer-events: none;">
 					<h5 style="font-size: 1rem; margin-bottom: 8px;">点击此处或拖拽文件到这里</h5>
-					<p class="text-muted mt-1" style="font-size: 0.85rem;">上传DemDec格式CSV、DAT、TXT或Excel数据文件</p>
+					<p class="text-muted mt-1" style="font-size: 0.85rem;">上传DemDec格式CSV、DAT、TXT、LOG或Excel数据文件</p>
 				</div>
           </div>
           
@@ -133,10 +136,10 @@
           </h4>
           <div class="file-upload-area" id="controlFileUploadArea" style="position: relative; cursor: pointer; padding: 20px; min-height: 120px;">
             <!-- DemControl文件输入框 -->
-			<input type="file" id="demControlFileInput" accept=".csv,.dat,.txt,.xlsx,.xls" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
+			<input type="file" id="demControlFileInput" accept=".csv,.dat,.txt,.log,.xlsx,.xls" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;">
 			<div style="position: relative; z-index: 1; pointer-events: none;">
 				<h5 style="font-size: 1rem; margin-bottom: 8px;">点击此处或拖拽文件到这里</h5>
-				<p class="text-muted mt-1" style="font-size: 0.85rem;">上传DemControl格式CSV、DAT、TXT或Excel文件</p>
+				<p class="text-muted mt-1" style="font-size: 0.85rem;">上传DemControl格式CSV、DAT、TXT、LOG或Excel文件</p>
 			</div>
           </div>
           
@@ -400,6 +403,9 @@
           </div>
         </div>
         <div class="pagination-controls d-none d-flex align-items-center gap-2" id="paginationControls">
+          <button class="btn btn-sm btn-outline-secondary" id="firstPageBtn" disabled>
+            首页
+          </button>
           <button class="btn btn-sm btn-outline-secondary" id="prevPageBtn" disabled>
             上一页
           </button>
@@ -422,6 +428,9 @@
           <button class="btn btn-sm btn-outline-secondary" id="nextPageBtn" disabled>
             下一页
           </button>
+          <button class="btn btn-sm btn-outline-secondary" id="lastPageBtn" disabled>
+            末页
+          </button>
         </div>
       </div>
     </div>
@@ -442,14 +451,12 @@
 
   <!-- 版本和修改说明区域 -->
   <div class="version-info mt-5 mb-3 text-center text-muted small">
-    <p>📦 版本：1.8.2 | 更新日期：2026-07-03</p>
+    <p>📦 版本：1.8.3 | 更新日期：2026-07-07</p>
     <p class="mt-1">
       🎉 本次更新内容：<br>
-      • 滑块UI美化：重新设计X轴范围拖动条，采用现代圆形手柄设计，渐变色彩方案<br>
-      • 离线可用性提升：xlsx库改为本地文件加载，无需网络连接<br>
-      • 原始数据时间筛选：原始数据模式下也支持时间筛选功能<br>
-      • 多行字段合并优化：自动去掉多余空格，数据更整洁<br>
-      • 布局优化：手动选择编码移至文件名下方便于操作
+      • 数据表格分页增强：新增"首页"和"末页"快捷按钮，方便快速跳转<br>
+      • X轴范围控制优化：开始值更新时自动调整结束值，结束值更新时保持开始值不变<br>
+      • 版本号统一维护：所有版本相关文件同步更新
     </p>
   </div>
 

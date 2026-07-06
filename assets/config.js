@@ -129,6 +129,12 @@ let detectedDateSource = '未知';
  */
 let tableDisplayMode = 'processed';
 
+/**
+ * 上一次的时间范围值（用于判断哪个值被更新）
+ */
+let previousTimeRangeStart = null;
+let previousTimeRangeEnd = null;
+
 // 使用getter函数来获取状态值
 export function getToggleLineEnabled() {
   return toggleLineEnabled;
@@ -207,6 +213,8 @@ const elements = {
   showRawDataBtn: document.getElementById('showRawDataBtn'),           // 显示原始数据按钮
   showProcessedDataBtn: document.getElementById('showProcessedDataBtn'), // 显示处理后数据按钮
   paginationControls: document.getElementById('paginationControls'),   // 分页控制容器
+  firstPageBtn: document.getElementById('firstPageBtn'),               // 首页按钮
+  lastPageBtn: document.getElementById('lastPageBtn'),                 // 末页按钮
   prevPageBtn: document.getElementById('prevPageBtn'),                 // 上一页按钮
   nextPageBtn: document.getElementById('nextPageBtn'),                 // 下一页按钮
   pageInfo: document.getElementById('pageInfo'),                       // 页码信息显示
@@ -268,6 +276,8 @@ export {
   detectedDate,
   detectedDateSource,
   tableDisplayMode,
+  previousTimeRangeStart,
+  previousTimeRangeEnd,
   elements
 };
 
@@ -299,4 +309,6 @@ export function updateVariables(newValues) {
   if (newValues.detectedDate !== undefined) detectedDate = newValues.detectedDate;
   if (newValues.detectedDateSource !== undefined) detectedDateSource = newValues.detectedDateSource;
   if (newValues.tableDisplayMode !== undefined) tableDisplayMode = newValues.tableDisplayMode;
+  if (newValues.previousTimeRangeStart !== undefined) previousTimeRangeStart = newValues.previousTimeRangeStart;
+  if (newValues.previousTimeRangeEnd !== undefined) previousTimeRangeEnd = newValues.previousTimeRangeEnd;
 }

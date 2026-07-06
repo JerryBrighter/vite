@@ -5,7 +5,7 @@
  * 协调各个模块之间的通信。
  */
 
-import { elements, selectedControlTime, originalData, currentPage, detectedDate, detectedDateSource, tableDisplayMode, updateVariables, equalAxisEnabled, toggleLineEnabled } from './config.js';
+import { elements, selectedControlTime, originalData, filteredData, currentPage, itemsPerPage, detectedDate, detectedDateSource, tableDisplayMode, updateVariables, equalAxisEnabled, toggleLineEnabled } from './config.js';
 import { parseTime, formatDateTime, updateStatus } from './utils.js';
 import { 
   handleDataFileUpload, 
@@ -441,6 +441,11 @@ function initEventListeners() {
   
   // 表格控制
   elements.toggleTableBtn.addEventListener('click', toggleTable);
+  elements.firstPageBtn.addEventListener('click', () => changePage(1));
+  elements.lastPageBtn.addEventListener('click', () => {
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    changePage(totalPages);
+  });
   elements.prevPageBtn.addEventListener('click', () => changePage(currentPage - 1));
   elements.nextPageBtn.addEventListener('click', () => changePage(currentPage + 1));
   elements.jumpBtn.addEventListener('click', jumpToPage);
