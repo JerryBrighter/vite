@@ -5,8 +5,8 @@
  * 表格显示切换等功能。
  */
 
-import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, currentPage, itemsPerPage, currentFileName, currentFileEncoding, currentFileDate, detectedDate, previousTimeRangeStart, previousTimeRangeEnd, updateVariables, getToggleLineEnabled, getEqualAxisEnabled } from './config.js';
-import { parseTime, formatDateTime, normalizeTime, updateStatus } from './utils.js';
+import { elements, originalData, filteredData, headers, xAxisIndex, yAxisIndices, yAxis2Indices, currentChart, currentPage, itemsPerPage, currentFileName, currentFileEncoding, currentFileDate, detectedDate, previousTimeRangeStart, previousTimeRangeEnd, diffOrders, defaultDiffOrder, updateVariables, getToggleLineEnabled, getEqualAxisEnabled } from './config.js';
+import { parseTime, formatDateTime, normalizeTime, updateStatus, calculateDiff } from './utils.js';
 import { updateUIAfterDataLoad, updateTable } from './fileHandler.js';
 
 /**
@@ -152,15 +152,31 @@ function calculateAxisRange(sortedData, xIndex, yIndices, y2Indices) {
   xMin = Math.min(...xValues);
   xMax = Math.max(...xValues);
   
+  const diffOrder = parseInt(elements.diffOrderSelect?.value) || defaultDiffOrder;
+  const hasDoubleData = yIndices.length > 0 && y2Indices.length > 0;
+  
   let allYValues = [];
-  yIndices.forEach(index => {
-    const result = processDatasetData(sortedData, index);
-    allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
-  });
-  y2Indices.forEach(index => {
-    const result = processDatasetData(sortedData, index);
-    allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
-  });
+  
+  if (hasDoubleData) {
+    const minLength = Math.min(yIndices.length, y2Indices.length);
+    for (let i = 0; i < minLength; i++) {
+      const leftData = processDatasetData(sortedData, yIndices[i]).data;
+      const rightData = processDatasetData(sortedData, y2Indices[i]).data;
+      const diffData = calculateDiff(leftData, diffOrder, rightData);
+      allYValues = allYValues.concat(diffData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+    }
+  } else {
+    yIndices.forEach(index => {
+      const result = processDatasetData(sortedData, index);
+      const diffData = calculateDiff(result.data, diffOrder);
+      allYValues = allYValues.concat(diffData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+    });
+    y2Indices.forEach(index => {
+      const result = processDatasetData(sortedData, index);
+      const diffData = calculateDiff(result.data, diffOrder);
+      allYValues = allYValues.concat(diffData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+    });
+  }
   
   if (allYValues.length > 0) {
     yMin = Math.min(...allYValues);
@@ -223,12 +239,19 @@ function getChartColors() {
  * @param {string} defaultLabel - 默认标签
  * @returns {Object} 数据集配置对象
  */
-function createSingleDataset(processedData, index, datasetIndex, yAxisID, color, defaultLabel) {
+function createSingleDataset(processedData, index, datasetIndex, yAxisID, color, defaultLabel, diffOrder = 0, rightData = null) {
   const { data, textMapping, reverseTextMapping, rowTextValues } = processDatasetData(processedData, index);
   
+  let finalData = data;
+  if (diffOrder > 0 || rightData) {
+    finalData = calculateDiff(data, diffOrder, rightData);
+  }
+  
+  const diffLabel = diffOrder === 1 ? '(1阶差值)' : diffOrder === 2 ? '(2阶差值)' : diffOrder === 3 ? '(3阶差值)' : '';
+  
   return {
-    label: headers[index]?.trim() || defaultLabel,
-    data: data,
+    label: `${headers[index]?.trim() || defaultLabel}${diffLabel}`,
+    data: finalData,
     textMapping: textMapping,
     reverseTextMapping: reverseTextMapping,
     rowTextValues: rowTextValues,
@@ -258,23 +281,48 @@ function createDatasets(sortedData, yIndices, y2Indices) {
   const colors = getChartColors();
   let colorIndex = 0;
   
-  yIndices.forEach((index, i) => {
-    const color = colors[colorIndex % colors.length];
-    const dataset = createSingleDataset(
-      sortedData, index, i, 'y', color, `Y轴${i + 1}`
-    );
-    datasets.push(dataset);
-    colorIndex++;
-  });
+  const diffOrder = parseInt(elements.diffOrderSelect?.value) || defaultDiffOrder;
+  const hasDoubleData = yIndices.length > 0 && y2Indices.length > 0;
   
-  y2Indices.forEach((index, i) => {
-    const color = colors[colorIndex % colors.length];
-    const dataset = createSingleDataset(
-      sortedData, index, yIndices.length + i, 'y1', color, `Y轴${yIndices.length + i + 1}`
-    );
-    datasets.push(dataset);
-    colorIndex++;
-  });
+  if (hasDoubleData) {
+    const minLength = Math.min(yIndices.length, y2Indices.length);
+    for (let i = 0; i < minLength; i++) {
+      const leftIndex = yIndices[i];
+      const rightIndex = y2Indices[i];
+      const color = colors[colorIndex % colors.length];
+      
+      const leftData = processDatasetData(sortedData, leftIndex).data;
+      const rightData = processDatasetData(sortedData, rightIndex).data;
+      
+      const dataset = createSingleDataset(
+        sortedData, leftIndex, i, 'y', color, 
+        `${headers[leftIndex]?.trim()} - ${headers[rightIndex]?.trim()}`,
+        diffOrder, rightData
+      );
+      datasets.push(dataset);
+      colorIndex++;
+    }
+  } else {
+    yIndices.forEach((index, i) => {
+      const color = colors[colorIndex % colors.length];
+      const dataset = createSingleDataset(
+        sortedData, index, i, 'y', color, `Y轴${i + 1}`,
+        diffOrder
+      );
+      datasets.push(dataset);
+      colorIndex++;
+    });
+    
+    y2Indices.forEach((index, i) => {
+      const color = colors[colorIndex % colors.length];
+      const dataset = createSingleDataset(
+        sortedData, index, yIndices.length + i, 'y1', color, `Y轴${yIndices.length + i + 1}`,
+        diffOrder
+      );
+      datasets.push(dataset);
+      colorIndex++;
+    });
+  }
   
   return datasets;
 }
@@ -469,11 +517,14 @@ function drawChart() {
   
   const axisRange = calculateAxisRange(processedData, xIndex, yIndices, y2Indices);
   
+  const diffOrder = parseInt(elements.diffOrderSelect?.value) || defaultDiffOrder;
   const labels = processedData.map(row => normalizeTime(row[xIndex], { 
     fileName: currentFileName, 
     fileDate: currentFileDate,
     detectedDate: detectedDate
   }));
+  
+  const adjustedLabels = diffOrder > 0 ? labels.slice(diffOrder) : labels;
   
   const datasets = createDatasets(processedData, yIndices, y2Indices);
   
@@ -512,7 +563,7 @@ function drawChart() {
     });
   });
   
-  const chartConfig = createChartConfig(labels, datasets, xIndex, axisRange);
+  const chartConfig = createChartConfig(adjustedLabels, datasets, xIndex, axisRange);
   const chart = new Chart(ctx, chartConfig);
   
   console.log('图表创建成功:', chart);
@@ -771,16 +822,64 @@ function exportData() {
   }
   
   try {
+    const diffOrder = parseInt(elements.diffOrderSelect?.value) || defaultDiffOrder;
+    const yIndices = Array.from(elements.yAxisSelect.selectedOptions).map(option => parseInt(option.value)).filter(index => !isNaN(index));
+    const y2Indices = Array.from(elements.yAxis2Select.selectedOptions).map(option => parseInt(option.value)).filter(index => !isNaN(index));
+    const hasDoubleData = yIndices.length > 0 && y2Indices.length > 0;
+    
+    let csvHeaders = [...headers];
+    let csvData = [...filteredData];
+    
+    if (diffOrder > 0) {
+      const diffHeaders = [];
+      const diffDataRows = [];
+      
+      if (hasDoubleData) {
+        const minLength = Math.min(yIndices.length, y2Indices.length);
+        for (let i = 0; i < minLength; i++) {
+          const leftIndex = yIndices[i];
+          const rightIndex = y2Indices[i];
+          const headerName = `${headers[leftIndex]?.trim()} - ${headers[rightIndex]?.trim()}(阶差值)`;
+          diffHeaders.push(headerName);
+          
+          const leftColData = filteredData.map(row => parseFloat(row[leftIndex]));
+          const rightColData = filteredData.map(row => parseFloat(row[rightIndex]));
+          const diffData = calculateDiff(leftColData, diffOrder, rightColData);
+          diffDataRows.push(diffData);
+        }
+      } else {
+        [...yIndices, ...y2Indices].forEach(index => {
+          const headerName = `${headers[index]?.trim()}(阶差值)`;
+          diffHeaders.push(headerName);
+          
+          const colData = filteredData.map(row => parseFloat(row[index]));
+          const diffData = calculateDiff(colData, diffOrder);
+          diffDataRows.push(diffData);
+        });
+      }
+      
+      csvHeaders = [...csvHeaders, ...diffHeaders];
+      
+      const adjustedData = filteredData.slice(diffOrder);
+      csvData = adjustedData.map((row, rowIndex) => {
+        const newRow = [...row];
+        diffDataRows.forEach((diffCol, colIndex) => {
+          newRow.push(diffCol[rowIndex] !== undefined ? diffCol[rowIndex] : '');
+        });
+        return newRow;
+      });
+    }
+    
     // 准备CSV内容
     let csvContent = '';
     
     // 添加标题行（取消双引号）
-    if (headers && headers.length > 0) {
-      csvContent += headers.map(header => header).join(',') + '\n';
+    if (csvHeaders.length > 0) {
+      csvContent += csvHeaders.map(header => header).join(',') + '\n';
     }
     
     // 添加数据行
-    filteredData.forEach(row => {
+    csvData.forEach(row => {
       const rowData = row.map((cell, index) => {
         if (cell === null || cell === undefined) {
           return '';

@@ -935,6 +935,101 @@ function encodeString(str, encoding) {
   }
 }
 
+/**
+ * 计算单侧数据的差值
+ * @param {Array} data - 数值数组
+ * @param {number} order - 差值阶数（0=原始值，1=1阶差值，2=2阶差值，3=3阶差值）
+ * @returns {Array} 差值数组
+ * @example
+ * calculateSingleDiff([1, 2, 4, 7, 11], 1); // 返回 [1, 2, 3, 4]
+ * calculateSingleDiff([1, 2, 4, 7, 11], 2); // 返回 [1, 1, 1]
+ */
+function calculateSingleDiff(data, order) {
+  if (!data || data.length === 0) return [];
+  
+  let result = [...data];
+  
+  for (let o = 1; o <= order; o++) {
+    const diff = [];
+    for (let i = 1; i < result.length; i++) {
+      const prev = parseFloat(result[i - 1]);
+      const curr = parseFloat(result[i]);
+      if (!isNaN(prev) && !isNaN(curr)) {
+        diff.push(curr - prev);
+      } else {
+        diff.push('');
+      }
+    }
+    result = diff;
+  }
+  
+  return result;
+}
+
+/**
+ * 计算双侧数据的差值（右侧-左侧）
+ * @param {Array} leftData - 左侧数值数组
+ * @param {Array} rightData - 右侧数值数组
+ * @param {number} order - 差值阶数（0=原始差值，1=1阶差值，2=2阶差值，3=3阶差值）
+ * @returns {Array} 差值数组
+ * @example
+ * calculateDoubleDiff([1, 2, 3, 4], [3, 5, 7, 9], 0); // 返回 [2, 3, 4, 5]
+ * calculateDoubleDiff([1, 2, 3, 4], [3, 5, 7, 9], 1); // 返回 [1, 1, 1]
+ */
+function calculateDoubleDiff(leftData, rightData, order) {
+  if (!leftData || !rightData || leftData.length === 0 || rightData.length === 0) return [];
+  
+  const minLength = Math.min(leftData.length, rightData.length);
+  let result = [];
+  
+  for (let i = 0; i < minLength; i++) {
+    const left = parseFloat(leftData[i]);
+    const right = parseFloat(rightData[i]);
+    if (!isNaN(left) && !isNaN(right)) {
+      result.push(right - left);
+    } else {
+      result.push('');
+    }
+  }
+  
+  for (let o = 1; o <= order; o++) {
+    const diff = [];
+    for (let i = 1; i < result.length; i++) {
+      const prev = parseFloat(result[i - 1]);
+      const curr = parseFloat(result[i]);
+      if (!isNaN(prev) && !isNaN(curr)) {
+        diff.push(curr - prev);
+      } else {
+        diff.push('');
+      }
+    }
+    result = diff;
+  }
+  
+  return result;
+}
+
+/**
+ * 计算数据的差值（通用入口）
+ * @param {Array} data - 数据数组（单侧模式）或左侧数据数组（双侧模式）
+ * @param {number} order - 差值阶数（0=原始值，1=1阶差值，2=2阶差值，3=3阶差值）
+ * @param {Array} rightData - 右侧数据数组（双侧模式时使用）
+ * @returns {Array} 差值数组
+ */
+function calculateDiff(data, order, rightData = null) {
+  if (!data || data.length === 0) return [];
+  
+  if (order === 0) {
+    return rightData ? calculateDoubleDiff(data, rightData, 0) : [...data];
+  }
+  
+  if (rightData) {
+    return calculateDoubleDiff(data, rightData, order);
+  }
+  
+  return calculateSingleDiff(data, order);
+}
+
 // 导出工具函数
 export {
   parseTime,
@@ -946,5 +1041,8 @@ export {
   detectEncoding,
   decodeData,
   encodeToGBK,
-  mergeExcelSheets
+  mergeExcelSheets,
+  calculateSingleDiff,
+  calculateDoubleDiff,
+  calculateDiff
 }

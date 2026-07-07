@@ -910,6 +910,7 @@ function updateUIAfterDataLoad() {
   elements.selectAllYAxis2Btn.disabled = false;
   elements.timeRangeSelector.classList.remove('d-none');
   elements.equalAxisBtn.classList.remove('d-none');
+  elements.diffOrderSelector.classList.remove('d-none');
   
   // 初始化X轴滑块
   initXAxisSlider();

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSV文件可视化分析工具 | DemDec & DemControl</title>
   <!-- 版本信息 -->
-  <meta name="version" content="1.8.3">
+  <meta name="version" content="1.8.4">
   <!-- 引入外部资源 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -23,7 +23,7 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <h1 class="page-title">CSV文件可视化分析工具</h1>
-          <span class="badge bg-secondary">v1.8.3</span>
+          <span class="badge bg-secondary">v1.8.4</span>
         </div>
         <div>
           <a href="./usage.html" class="btn btn-outline-primary me-2">
@@ -258,6 +258,30 @@
         </div>
       </div>
       
+      <!-- 差值阶数选择器 -->
+      <div class="diff-order-selector d-none" id="diffOrderSelector">
+        <h5>📊 差值计算设置：</h5>
+        <div class="row">
+          <div class="col-md-6">
+            <label for="diffOrderSelect" class="form-label fw-medium">数据差值：</label>
+            <select class="form-select" id="diffOrderSelect">
+              <option value="0">原始值</option>
+              <option value="1">1阶差值</option>
+              <option value="2">2阶差值</option>
+              <option value="3">3阶差值</option>
+            </select>
+            <div class="help-text">选择数据显示方式：原始值或各阶差值</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-medium">差值说明：</label>
+            <div class="help-text bg-light p-2 rounded">
+              单侧数据：相邻数据前后计算差值<br>
+              双侧数据：左右侧对应列数据计算差值
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <!-- X轴范围选择器 -->
       <div class="time-range-selector d-none" id="timeRangeSelector">
         <h5>📏 X轴范围设置：</h5>
@@ -451,12 +475,13 @@
 
   <!-- 版本和修改说明区域 -->
   <div class="version-info mt-5 mb-3 text-center text-muted small">
-    <p>📦 版本：1.8.3 | 更新日期：2026-07-07</p>
+    <p>📦 版本：1.8.4 | 更新日期：2026-07-08</p>
     <p class="mt-1">
       🎉 本次更新内容：<br>
-      • 数据表格分页增强：新增"首页"和"末页"快捷按钮，方便快速跳转<br>
-      • X轴范围控制优化：开始值更新时自动调整结束值，结束值更新时保持开始值不变<br>
-      • 版本号统一维护：所有版本相关文件同步更新
+      • 新增差值计算功能：支持原始值、1阶差值、2阶差值、3阶差值<br>
+      • 单侧数据差值：相邻数据前后计算差值<br>
+      • 双侧数据差值：左右侧对应列数据计算差值（右侧-左侧）<br>
+      • 导出数据时自动添加差值列
     </p>
   </div>
 

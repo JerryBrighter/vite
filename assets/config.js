@@ -135,6 +135,19 @@ let tableDisplayMode = 'processed';
 let previousTimeRangeStart = null;
 let previousTimeRangeEnd = null;
 
+/**
+ * 差值阶数配置 - 每个数据列的差值阶数设置
+ * 0=原始值，1=1阶差值，2=2阶差值，3=3阶差值
+ * @type {Object<string, number>}
+ */
+let diffOrders = {};
+
+/**
+ * 默认差值阶数 - 新建列时的默认差值阶数
+ * @type {number}
+ */
+let defaultDiffOrder = 0;
+
 // 使用getter函数来获取状态值
 export function getToggleLineEnabled() {
   return toggleLineEnabled;
@@ -250,7 +263,11 @@ const elements = {
   detectedDateEdit: document.getElementById('detectedDateEdit'),         // 日期修改区域
   editDetectedDateBtn: document.getElementById('editDetectedDateBtn'),   // 修改日期按钮
   confirmDetectedDateBtn: document.getElementById('confirmDetectedDateBtn'), // 确认日期按钮
-  cancelDetectedDateBtn: document.getElementById('cancelDetectedDateBtn')  // 取消日期按钮
+  cancelDetectedDateBtn: document.getElementById('cancelDetectedDateBtn'), // 取消日期按钮
+  
+  // 差值选择元素
+  diffOrderSelector: document.getElementById('diffOrderSelector'),       // 差值选择器容器
+  diffOrderSelect: document.getElementById('diffOrderSelect')            // 差值阶数选择器
 };
 
 // 导出配置
@@ -278,6 +295,8 @@ export {
   tableDisplayMode,
   previousTimeRangeStart,
   previousTimeRangeEnd,
+  diffOrders,
+  defaultDiffOrder,
   elements
 };
 
@@ -311,4 +330,6 @@ export function updateVariables(newValues) {
   if (newValues.tableDisplayMode !== undefined) tableDisplayMode = newValues.tableDisplayMode;
   if (newValues.previousTimeRangeStart !== undefined) previousTimeRangeStart = newValues.previousTimeRangeStart;
   if (newValues.previousTimeRangeEnd !== undefined) previousTimeRangeEnd = newValues.previousTimeRangeEnd;
+  if (newValues.diffOrders !== undefined) diffOrders = newValues.diffOrders;
+  if (newValues.defaultDiffOrder !== undefined) defaultDiffOrder = newValues.defaultDiffOrder;
 }

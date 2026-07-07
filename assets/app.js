@@ -439,6 +439,13 @@ function initEventListeners() {
   elements.resetDataBtn.addEventListener('click', resetData);
   elements.clearAllBtn.addEventListener('click', clearAll);
   
+  // 差值选择器事件
+  elements.diffOrderSelect.addEventListener('change', function() {
+    if (elements.drawChartBtn.disabled === false) {
+      drawChart();
+    }
+  });
+  
   // 表格控制
   elements.toggleTableBtn.addEventListener('click', toggleTable);
   elements.firstPageBtn.addEventListener('click', () => changePage(1));
