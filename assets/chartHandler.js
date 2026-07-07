@@ -162,8 +162,14 @@ function calculateAxisRange(sortedData, xIndex, yIndices, y2Indices) {
     for (let i = 0; i < minLength; i++) {
       const leftData = processDatasetData(sortedData, yIndices[i]).data;
       const rightData = processDatasetData(sortedData, y2Indices[i]).data;
-      const diffData = calculateDiff(leftData, diffOrder, rightData);
-      allYValues = allYValues.concat(diffData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+      
+      if (diffOrder === 0) {
+        allYValues = allYValues.concat(leftData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+        allYValues = allYValues.concat(rightData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+      } else {
+        const diffData = calculateDiff(leftData, diffOrder, rightData);
+        allYValues = allYValues.concat(diffData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+      }
     }
   } else {
     yIndices.forEach(index => {
@@ -289,18 +295,40 @@ function createDatasets(sortedData, yIndices, y2Indices) {
     for (let i = 0; i < minLength; i++) {
       const leftIndex = yIndices[i];
       const rightIndex = y2Indices[i];
-      const color = colors[colorIndex % colors.length];
       
-      const leftData = processDatasetData(sortedData, leftIndex).data;
-      const rightData = processDatasetData(sortedData, rightIndex).data;
-      
-      const dataset = createSingleDataset(
-        sortedData, leftIndex, i, 'y', color, 
-        `${headers[leftIndex]?.trim()} - ${headers[rightIndex]?.trim()}`,
-        diffOrder, rightData
-      );
-      datasets.push(dataset);
-      colorIndex++;
+      if (diffOrder === 0) {
+        const leftColor = colors[colorIndex % colors.length];
+        const rightColor = colors[(colorIndex + 1) % colors.length];
+        
+        const leftDataset = createSingleDataset(
+          sortedData, leftIndex, i * 2, 'y', leftColor, 
+          headers[leftIndex]?.trim() || `左侧Y轴${i + 1}`,
+          0
+        );
+        datasets.push(leftDataset);
+        colorIndex++;
+        
+        const rightDataset = createSingleDataset(
+          sortedData, rightIndex, i * 2 + 1, 'y1', rightColor, 
+          headers[rightIndex]?.trim() || `右侧Y轴${i + 1}`,
+          0
+        );
+        datasets.push(rightDataset);
+        colorIndex++;
+      } else {
+        const color = colors[colorIndex % colors.length];
+        
+        const leftData = processDatasetData(sortedData, leftIndex).data;
+        const rightData = processDatasetData(sortedData, rightIndex).data;
+        
+        const dataset = createSingleDataset(
+          sortedData, leftIndex, i, 'y', color, 
+          `${headers[leftIndex]?.trim()} - ${headers[rightIndex]?.trim()}`,
+          diffOrder, rightData
+        );
+        datasets.push(dataset);
+        colorIndex++;
+      }
     }
   } else {
     yIndices.forEach((index, i) => {

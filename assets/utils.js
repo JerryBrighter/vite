@@ -445,17 +445,21 @@ function parseCSVContent(lines) {
   
   if (data.length > 1) {
     const headerLength = data[0].length;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row.length < headerLength) {
+        while (row.length < headerLength) {
+          row.push('');
+        }
+      } else if (row.length > headerLength) {
+        data[i] = row.slice(0, headerLength);
+      }
+    }
+    
     while (data.length > 1) {
       const lastRow = data[data.length - 1];
-      if (lastRow.length >= headerLength) {
-        let allCellsValid = true;
-        for (let i = 0; i < lastRow.length; i++) {
-          if (lastRow[i] === undefined || lastRow[i] === null || lastRow[i].trim() === '') {
-            allCellsValid = false;
-            break;
-          }
-        }
-        if (allCellsValid) break;
+      if (lastRow[0] !== undefined && lastRow[0] !== null && lastRow[0].trim() !== '') {
+        break;
       }
       data.pop();
     }
