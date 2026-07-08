@@ -1,5 +1,5 @@
 // main.js - Electron 主进程核心文件
-const { app, BrowserWindow, path } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
 // 解决开发环境下的路径兼容问题
@@ -13,9 +13,8 @@ function createWindow() {
     height: 800,
     title: 'CSV可视化工具',
     webPreferences: {
-      nodeIntegration: true, // 允许渲染进程使用Node.js API（按需开启）
-      contextIsolation: false, // 配合nodeIntegration使用
-      preload: path.join(__dirname, 'preload.js') // 可选：预加载脚本（无则注释）
+      nodeIntegration: true,
+      contextIsolation: false
     }
   });
 

@@ -699,6 +699,82 @@ function resetTimeRange() {
  * @example
  * autoTimeRange();
  */
+function drawCustomLegend(ctx, width, exportHeight, leftDatasets, rightDatasets) {
+  const legendY = exportHeight - 55;
+  
+  ctx.font = 'bold 11px Microsoft YaHei, sans-serif';
+  ctx.fillStyle = '#495057';
+  
+  if (leftDatasets.length > 0 && rightDatasets.length > 0) {
+    const halfWidth = width / 2;
+    
+    ctx.fillText('左侧Y轴曲线', halfWidth / 2 - 35, legendY);
+    
+    let x = 20;
+    let y = legendY + 18;
+    leftDatasets.forEach((dataset, index) => {
+      if (!dataset.hidden) {
+        ctx.fillStyle = dataset.borderColor;
+        ctx.fillRect(x, y - 6, 12, 12);
+        
+        ctx.fillStyle = '#495057';
+        ctx.font = '11px Microsoft YaHei, sans-serif';
+        ctx.fillText(dataset.label, x + 18, y + 4);
+        
+        x += ctx.measureText(dataset.label).width + 35;
+        if (x > halfWidth - 20) {
+          x = 20;
+          y += 18;
+        }
+      }
+    });
+    
+    ctx.font = 'bold 11px Microsoft YaHei, sans-serif';
+    ctx.fillStyle = '#495057';
+    ctx.fillText('右侧Y轴曲线', halfWidth + halfWidth / 2 - 35, legendY);
+    
+    x = halfWidth + 20;
+    y = legendY + 18;
+    rightDatasets.forEach((dataset, index) => {
+      if (!dataset.hidden) {
+        ctx.fillStyle = dataset.borderColor;
+        ctx.fillRect(x, y - 6, 12, 12);
+        
+        ctx.fillStyle = '#495057';
+        ctx.font = '11px Microsoft YaHei, sans-serif';
+        ctx.fillText(dataset.label, x + 18, y + 4);
+        
+        x += ctx.measureText(dataset.label).width + 35;
+        if (x > width - 20) {
+          x = halfWidth + 20;
+          y += 18;
+        }
+      }
+    });
+  } else {
+    const allDatasets = [...leftDatasets, ...rightDatasets];
+    let x = 20;
+    let y = legendY + 18;
+    
+    allDatasets.forEach((dataset, index) => {
+      if (!dataset.hidden) {
+        ctx.fillStyle = dataset.borderColor;
+        ctx.fillRect(x, y - 6, 12, 12);
+        
+        ctx.fillStyle = '#495057';
+        ctx.font = '11px Microsoft YaHei, sans-serif';
+        ctx.fillText(dataset.label, x + 18, y + 4);
+        
+        x += ctx.measureText(dataset.label).width + 35;
+        if (x > width - 20) {
+          x = 20;
+          y += 18;
+        }
+      }
+    });
+  }
+}
+
 function autoTimeRange() {
   if (originalData.length > 0) {
     const xIndex = parseInt(elements.xAxisSelect.value);
@@ -737,20 +813,14 @@ async function exportChart() {
     const originalTitleDisplay = currentChart.options.plugins.title.display;
     const originalHeight = elements.lineChart.height;
     
-    currentChart.options.plugins.legend.display = true;
-    currentChart.options.plugins.legend.position = 'bottom';
-    currentChart.options.plugins.legend.labels = {
-      usePointStyle: true,
-      padding: 15,
-      font: {
-        family: "'Microsoft YaHei', sans-serif",
-        size: 11
-      }
-    };
+    currentChart.options.plugins.legend.display = false;
     currentChart.options.plugins.title.display = false;
     currentChart.update('none');
     
-    const legendHeight = 60;
+    const leftDatasets = currentChart.data.datasets.filter(d => d.yAxisID === 'y');
+    const rightDatasets = currentChart.data.datasets.filter(d => d.yAxisID === 'y1');
+    
+    const legendHeight = Math.max(60, Math.max(leftDatasets.length, rightDatasets.length) * 25 + 40);
     const exportHeight = originalHeight + legendHeight;
     
     const canvas = document.createElement('canvas');
@@ -773,6 +843,8 @@ async function exportChart() {
     
     elements.lineChart.height = originalHeight;
     currentChart.resize();
+    
+    drawCustomLegend(ctx, elements.lineChart.width, exportHeight, leftDatasets, rightDatasets);
     
     const dataUrl = canvas.toDataURL('image/jpeg', 1);
     

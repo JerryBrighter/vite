@@ -109,12 +109,19 @@ function parseDateFromFileName(fileName) {
     const match = fileName.match(pattern);
     if (match) {
       const year = match[1];
-      const month = match[2].padStart(2, '0');
-      const day = match[3]?.padStart(2, '0') || '01';
+      let month, day;
+      
+      if (match[2]) {
+        month = match[2].padStart(2, '0');
+        day = match[3]?.padStart(2, '0') || '01';
+      } else {
+        month = year.substring(4, 6).padStart(2, '0');
+        day = year.substring(6, 8).padStart(2, '0');
+      }
       
       // 验证日期是否有效
       if (parseInt(month) >= 1 && parseInt(month) <= 12 && parseInt(day) >= 1 && parseInt(day) <= 31) {
-        return `${year}-${month}-${day}`;
+        return `${year.substring(0, 4)}-${month}-${day}`;
       }
     }
   }
@@ -272,6 +279,10 @@ function parseCSVContent(lines) {
   // 预处理：处理标题行多余TAB键的情况
   const processedLines = preprocessLines(lines);
   
+  // console.log('[DEBUG] parseCSVContent - 输入行数:', lines.length);
+  // console.log('[DEBUG] parseCSVContent - processedLines行数:', processedLines.length);
+  // console.log('[DEBUG] parseCSVContent - processedLines[0]:', processedLines[0]);
+  
   const data = [];
   let headerRow = [];
   
@@ -394,6 +405,9 @@ function parseCSVContent(lines) {
        }
        data.push(headerRow);
        
+       // console.log('[DEBUG] 空格分隔格式 - headerRow:', headerRow);
+       // console.log('[DEBUG] 空格分隔格式 - 数据列数:', headerRow.length - 1);
+       
        processedLines.forEach(line => {
          const parts = line.trim().split(/\s+/);
          if (parts.length >= 2) {
@@ -405,6 +419,8 @@ function parseCSVContent(lines) {
            data.push(row);
          }
        });
+       
+       // console.log('[DEBUG] 空格分隔格式 - 数据行数:', data.length - 1);
      } else if (isRowNumberFormat(processedLines)) {
        const headerCells = processedLines[0].split('\t').map(cell => cell.trim());
        headerRow = ['时间'];
@@ -518,19 +534,40 @@ function detectSpaceSeparatedFormat(line) {
   const trimmed = line.trim();
   const parts = trimmed.split(/\s+/);
   
-  if (parts.length < 3) return false;
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - line:', line.substring(0, 50));
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - parts:', parts);
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - parts.length:', parts.length);
+  
+  if (parts.length < 3) {
+    // console.log('[DEBUG] detectSpaceSeparatedFormat - 列数不足3，返回false');
+    return false;
+  }
   
   const firstPart = parts[0];
   
   const datePattern = /^\d{4}-\d{1,2}-\d{1,2}$/;
   const underscoreTimePattern = /^(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})(_\d{3})?$/;
   
-  if (!datePattern.test(firstPart) && !underscoreTimePattern.test(firstPart)) return false;
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - firstPart:', firstPart);
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - datePattern.test:', datePattern.test(firstPart));
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - underscoreTimePattern.test:', underscoreTimePattern.test(firstPart));
+  
+  if (!datePattern.test(firstPart) && !underscoreTimePattern.test(firstPart)) {
+    // console.log('[DEBUG] detectSpaceSeparatedFormat - 第一部分不匹配日期格式，返回false');
+    return false;
+  }
   
   const timePattern = /^\d{1,2}:\d{1,2}:\d{1,2}(\.\d+)?$/;
   const isoTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/;
   
-  if (!timePattern.test(parts[1]) && !isoTimePattern.test(parts[1])) return false;
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - parts[1]:', parts[1]);
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - timePattern.test:', timePattern.test(parts[1]));
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - isoTimePattern.test:', isoTimePattern.test(parts[1]));
+  
+  if (!timePattern.test(parts[1]) && !isoTimePattern.test(parts[1])) {
+    // console.log('[DEBUG] detectSpaceSeparatedFormat - 第二部分不匹配时间格式，返回false');
+    return false;
+  }
   
   let numericCount = 0;
   let nonNumericCount = 0;
@@ -543,6 +580,9 @@ function detectSpaceSeparatedFormat(line) {
       nonNumericCount++;
     }
   }
+  
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - numericCount:', numericCount, 'nonNumericCount:', nonNumericCount);
+  // console.log('[DEBUG] detectSpaceSeparatedFormat - 返回:', numericCount >= 1);
   
   return numericCount >= 1;
 }

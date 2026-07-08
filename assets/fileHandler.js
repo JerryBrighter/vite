@@ -85,21 +85,32 @@ function updateDetectedDateDisplay() {
  * @param {File} file - 数据文件对象
  */
 function autoDetectAndProcessDataFile(file) {
+  // console.log('[DEBUG] autoDetectAndProcessDataFile 被调用，文件名:', file.name, '大小:', file.size);
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
       const buffer = new Uint8Array(e.target.result);
+      // console.log('[DEBUG] 文件读取完成，buffer长度:', buffer.length);
       const detectedEncoding = detectEncoding(buffer);
+      // console.log('[DEBUG] 检测到编码:', detectedEncoding);
       let content = decodeData(buffer, detectedEncoding);
+      // console.log('[DEBUG] 解码后内容前500字符:', content.substring(0, 500));
       
       const lines = content.split('\n').filter(line => line.trim() !== '');
+      // console.log('[DEBUG] 解析出行数:', lines.length);
       const parsedData = parseCSVContent(lines);
+      // console.log('[DEBUG] parseCSVContent结果行数:', parsedData.length);
+      if (parsedData.length > 0) {
+        // console.log('[DEBUG] 第一行:', parsedData[0]);
+        // console.log('[DEBUG] 第二行:', parsedData[1]);
+      }
       processDataFile(parsedData, detectedEncoding);
       
       // 自动检测成功后，不显示编码选择器，除非用户需要手动修改
       // 但为了让用户知道检测结果，我们更新预览但不显示选择器
       updateEncodingPreview();
     } catch (error) {
+      console.error('[DEBUG] autoDetectAndProcessDataFile 异常:', error);
       // 解码失败时显示编码选择器，让用户手动选择
       elements.encodingSelector.classList.remove('d-none');
       updateEncodingPreview();
@@ -613,7 +624,12 @@ function confirmControlEncoding() {
  * processDataFile(parsedData, 'gb2312');
  */
 function processDataFile(data, encoding) {
-  if (data.length === 0) return;
+  // console.log('[DEBUG] processDataFile 被调用，data.length:', data.length, 'encoding:', encoding);
+  if (data.length === 0) {
+    // console.log('[DEBUG] processDataFile - data为空，直接返回');
+    updateStatus('⚠️ 数据文件解析失败，未读取到有效数据');
+    return;
+  }
   
   // 保存原始数据（未处理的格式）
   const savedRawHeaders = data.length > 0 ? [...data[0]] : [];
@@ -697,10 +713,10 @@ function processDataFile(data, encoding) {
   }
   
   // 更新全局变量
-  console.log('[DEBUG] processDataFile - finalHeaders:', finalHeaders);
-  console.log('[DEBUG] processDataFile - newOriginalData行数:', newOriginalData.length);
-  console.log('[DEBUG] processDataFile - newFilteredData行数:', newFilteredData.length);
-  console.log('[DEBUG] processDataFile - hasHeader:', hasHeader, 'isExcel:', isExcel);
+  // console.log('[DEBUG] processDataFile - finalHeaders:', finalHeaders);
+  // console.log('[DEBUG] processDataFile - newOriginalData行数:', newOriginalData.length);
+  // console.log('[DEBUG] processDataFile - newFilteredData行数:', newFilteredData.length);
+  // console.log('[DEBUG] processDataFile - hasHeader:', hasHeader, 'isExcel:', isExcel);
   updateVariables({
     rawData: savedRawData,
     rawHeaders: savedRawHeaders,
@@ -709,6 +725,11 @@ function processDataFile(data, encoding) {
     headers: finalHeaders,
     currentFileEncoding: encoding
   });
+  
+  // console.log('[DEBUG] 全局变量更新完成');
+  // console.log('[DEBUG] headers:', finalHeaders);
+  // console.log('[DEBUG] originalData行数:', newOriginalData.length);
+  // console.log('[DEBUG] filteredData行数:', newFilteredData.length);
   
   // 报告解析结果
   const encodingNames = {
