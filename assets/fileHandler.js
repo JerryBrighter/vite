@@ -85,24 +85,24 @@ function updateDetectedDateDisplay() {
  * @param {File} file - 数据文件对象
  */
 function autoDetectAndProcessDataFile(file) {
-  // console.log('[DEBUG] autoDetectAndProcessDataFile 被调用，文件名:', file.name, '大小:', file.size);
+  // // console.log('[DEBUG] autoDetectAndProcessDataFile 被调用，文件名:', file.name, '大小:', file.size);
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
       const buffer = new Uint8Array(e.target.result);
-      // console.log('[DEBUG] 文件读取完成，buffer长度:', buffer.length);
+      // // console.log('[DEBUG] 文件读取完成，buffer长度:', buffer.length);
       const detectedEncoding = detectEncoding(buffer);
-      // console.log('[DEBUG] 检测到编码:', detectedEncoding);
+      // // console.log('[DEBUG] 检测到编码:', detectedEncoding);
       let content = decodeData(buffer, detectedEncoding);
-      // console.log('[DEBUG] 解码后内容前500字符:', content.substring(0, 500));
+      // // console.log('[DEBUG] 解码后内容前500字符:', content.substring(0, 500));
       
       const lines = content.split('\n').filter(line => line.trim() !== '');
-      // console.log('[DEBUG] 解析出行数:', lines.length);
+      // // console.log('[DEBUG] 解析出行数:', lines.length);
       const parsedData = parseCSVContent(lines);
-      // console.log('[DEBUG] parseCSVContent结果行数:', parsedData.length);
+      // // console.log('[DEBUG] parseCSVContent结果行数:', parsedData.length);
       if (parsedData.length > 0) {
-        // console.log('[DEBUG] 第一行:', parsedData[0]);
-        // console.log('[DEBUG] 第二行:', parsedData[1]);
+        // // console.log('[DEBUG] 第一行:', parsedData[0]);
+        // // console.log('[DEBUG] 第二行:', parsedData[1]);
       }
       processDataFile(parsedData, detectedEncoding);
       
@@ -135,7 +135,14 @@ function handleExcelFile(file) {
     const data = new Uint8Array(e.target.result);
     updateStatus(`📊 开始读取Excel文件：${file.name}`);
     
-    // 尝试多种配置解析，选择最佳结果（与测试页面一致）
+    if (typeof XLSX === 'undefined') {
+      updateStatus('❌ XLSX库未加载');
+      return;
+    }
+    
+    // console.log('[DEBUG] XLSX库已加载，版本:', XLSX.version);
+    // console.log('[DEBUG] 文件大小:', data.length, 'bytes');
+    
     const configs = [
       { name: '标准配置', options: { type: 'array', cellStyles: true, cellText: true, cellDates: true, raw: false } },
       { name: 'GBK编码', options: { type: 'array', codepage: 936, cellStyles: true, cellText: true, cellDates: true, raw: false } },
@@ -149,15 +156,20 @@ function handleExcelFile(file) {
     
     for (const config of configs) {
       try {
+        // console.log('[DEBUG] 尝试配置:', config.name);
         const workbook = XLSX.read(data, config.options);
+        // console.log('[DEBUG] 解析成功，Sheet数量:', workbook.SheetNames.length);
         
         if (workbook.SheetNames.length > 0) {
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
           const firstData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false });
+          // console.log('[DEBUG] 第一Sheet数据行数:', firstData.length);
           
           if (firstData.length > 0 && firstData[0].length > 0) {
             const firstHeader = String(firstData[0][0]).trim();
+            // console.log('[DEBUG] 表头首列:', firstHeader);
             const hasGarbledChars = /[\ufffd\x00-\x1f\x7f-\x9f]/.test(firstHeader);
+            // console.log('[DEBUG] 是否有乱码:', hasGarbledChars);
             
             if (!hasGarbledChars) {
               bestWorkbook = workbook;
@@ -175,6 +187,7 @@ function handleExcelFile(file) {
           }
         }
       } catch (error) {
+        console.error('[DEBUG] 配置', config.name, '解析失败:', error);
         updateStatus(`⚠️ ${config.name}解析失败: ${error.message}`);
       }
     }
@@ -624,9 +637,9 @@ function confirmControlEncoding() {
  * processDataFile(parsedData, 'gb2312');
  */
 function processDataFile(data, encoding) {
-  // console.log('[DEBUG] processDataFile 被调用，data.length:', data.length, 'encoding:', encoding);
+  // // console.log('[DEBUG] processDataFile 被调用，data.length:', data.length, 'encoding:', encoding);
   if (data.length === 0) {
-    // console.log('[DEBUG] processDataFile - data为空，直接返回');
+    // // console.log('[DEBUG] processDataFile - data为空，直接返回');
     updateStatus('⚠️ 数据文件解析失败，未读取到有效数据');
     return;
   }
@@ -713,10 +726,10 @@ function processDataFile(data, encoding) {
   }
   
   // 更新全局变量
-  // console.log('[DEBUG] processDataFile - finalHeaders:', finalHeaders);
-  // console.log('[DEBUG] processDataFile - newOriginalData行数:', newOriginalData.length);
-  // console.log('[DEBUG] processDataFile - newFilteredData行数:', newFilteredData.length);
-  // console.log('[DEBUG] processDataFile - hasHeader:', hasHeader, 'isExcel:', isExcel);
+  // // console.log('[DEBUG] processDataFile - finalHeaders:', finalHeaders);
+  // // console.log('[DEBUG] processDataFile - newOriginalData行数:', newOriginalData.length);
+  // // console.log('[DEBUG] processDataFile - newFilteredData行数:', newFilteredData.length);
+  // // console.log('[DEBUG] processDataFile - hasHeader:', hasHeader, 'isExcel:', isExcel);
   updateVariables({
     rawData: savedRawData,
     rawHeaders: savedRawHeaders,
@@ -726,10 +739,10 @@ function processDataFile(data, encoding) {
     currentFileEncoding: encoding
   });
   
-  // console.log('[DEBUG] 全局变量更新完成');
-  // console.log('[DEBUG] headers:', finalHeaders);
-  // console.log('[DEBUG] originalData行数:', newOriginalData.length);
-  // console.log('[DEBUG] filteredData行数:', newFilteredData.length);
+  // // console.log('[DEBUG] 全局变量更新完成');
+  // // console.log('[DEBUG] headers:', finalHeaders);
+  // // console.log('[DEBUG] originalData行数:', newOriginalData.length);
+  // // console.log('[DEBUG] filteredData行数:', newFilteredData.length);
   
   // 报告解析结果
   const encodingNames = {
