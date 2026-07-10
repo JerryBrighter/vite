@@ -443,6 +443,28 @@ function parseCSVContent(lines) {
            data.push(row);
          }
        }
+     } else if (isTimeInSecondColumnFormat(processedLines)) {
+       const headerCells = processedLines[0].split(',').map(cell => cell.trim());
+       headerRow = ['时间'];
+       for (let i = 2; i < headerCells.length; i++) {
+         headerRow.push(headerCells[i]);
+       }
+       data.push(headerRow);
+       
+       for (let i = 1; i < processedLines.length; i++) {
+         const line = processedLines[i];
+         if (!line || line.trim() === '') continue;
+         
+         const parts = line.split(',').map(cell => cell.trim());
+         if (parts.length >= headerRow.length + 1) {
+           const row = [];
+           row.push(parts[1]);
+           for (let j = 2; j < parts.length; j++) {
+             row.push(parts[j]);
+           }
+           data.push(row);
+         }
+       }
      } else {
       // 普通CSV格式或TAB分隔的格式
       processedLines.forEach(line => {
@@ -516,6 +538,40 @@ function isRowNumberFormat(lines) {
   
   const firstCell = dataCells[0];
   if (!/^\d+$/.test(firstCell)) return false;
+  
+  const secondCell = dataCells[1];
+  if (isNaN(parseTime(secondCell))) return false;
+  
+  return true;
+}
+
+/**
+ * 检测是否为时间列在第二列的CSV格式
+ * 格式：AccMilSecond,Time,列1,列2,...
+ * 特征：第一列不是"时间"，第二列是"Time"（可能有空格）
+ * @param {Array<string>} lines - 文件行数组
+ * @returns {boolean} 是否为时间列在第二列的格式
+ */
+function isTimeInSecondColumnFormat(lines) {
+  if (lines.length < 2) return false;
+  
+  const headerLine = lines[0].trim();
+  if (!headerLine.includes(',')) return false;
+  
+  const headerCells = headerLine.split(',').map(cell => cell.trim());
+  if (headerCells.length < 3) return false;
+  
+  const firstHeader = headerCells[0];
+  if (firstHeader === '时间') return false;
+  
+  const secondHeader = headerCells[1];
+  if (!secondHeader.toLowerCase().includes('time')) return false;
+  
+  const firstDataLine = lines[1].trim();
+  if (!firstDataLine.includes(',')) return false;
+  
+  const dataCells = firstDataLine.split(',').map(cell => cell.trim());
+  if (dataCells.length < 3) return false;
   
   const secondCell = dataCells[1];
   if (isNaN(parseTime(secondCell))) return false;
