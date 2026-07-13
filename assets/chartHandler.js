@@ -158,17 +158,35 @@ function calculateAxisRange(sortedData, xIndex, yIndices, y2Indices) {
   let allYValues = [];
   
   if (hasDoubleData) {
-    const minLength = Math.min(yIndices.length, y2Indices.length);
-    for (let i = 0; i < minLength; i++) {
-      const leftData = processDatasetData(sortedData, yIndices[i]).data;
-      const rightData = processDatasetData(sortedData, y2Indices[i]).data;
-      
-      if (diffOrder === 0) {
-        allYValues = allYValues.concat(leftData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
-        allYValues = allYValues.concat(rightData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
-      } else {
-        const diffData = calculateDiff(leftData, diffOrder, rightData);
-        allYValues = allYValues.concat(diffData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+    if (diffOrder === 0) {
+      yIndices.forEach(index => {
+        const result = processDatasetData(sortedData, index);
+        allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+      });
+      y2Indices.forEach(index => {
+        const result = processDatasetData(sortedData, index);
+        allYValues = allYValues.concat(result.data.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+      });
+    } else {
+      const maxLength = Math.max(yIndices.length, y2Indices.length);
+      for (let i = 0; i < maxLength; i++) {
+        const leftIndex = yIndices[i];
+        const rightIndex = y2Indices[i];
+        
+        if (leftIndex !== undefined && rightIndex !== undefined) {
+          const leftData = processDatasetData(sortedData, leftIndex).data;
+          const rightData = processDatasetData(sortedData, rightIndex).data;
+          const diffData = calculateDiff(leftData, diffOrder, rightData);
+          allYValues = allYValues.concat(diffData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+        } else if (leftIndex !== undefined) {
+          const result = processDatasetData(sortedData, leftIndex);
+          const diffData = calculateDiff(result.data, diffOrder);
+          allYValues = allYValues.concat(diffData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+        } else if (rightIndex !== undefined) {
+          const result = processDatasetData(sortedData, rightIndex);
+          const diffData = calculateDiff(result.data, diffOrder);
+          allYValues = allYValues.concat(diffData.map(v => parseFloat(v)).filter(v => !isNaN(v)));
+        }
       }
     }
   } else {
@@ -291,43 +309,62 @@ function createDatasets(sortedData, yIndices, y2Indices) {
   const hasDoubleData = yIndices.length > 0 && y2Indices.length > 0;
   
   if (hasDoubleData) {
-    const minLength = Math.min(yIndices.length, y2Indices.length);
-    for (let i = 0; i < minLength; i++) {
-      const leftIndex = yIndices[i];
-      const rightIndex = y2Indices[i];
-      
-      if (diffOrder === 0) {
-        const leftColor = colors[colorIndex % colors.length];
-        const rightColor = colors[(colorIndex + 1) % colors.length];
-        
-        const leftDataset = createSingleDataset(
-          sortedData, leftIndex, i * 2, 'y', leftColor, 
-          headers[leftIndex]?.trim() || `左侧Y轴${i + 1}`,
-          0
-        );
-        datasets.push(leftDataset);
-        colorIndex++;
-        
-        const rightDataset = createSingleDataset(
-          sortedData, rightIndex, i * 2 + 1, 'y1', rightColor, 
-          headers[rightIndex]?.trim() || `右侧Y轴${i + 1}`,
-          0
-        );
-        datasets.push(rightDataset);
-        colorIndex++;
-      } else {
+    if (diffOrder === 0) {
+      yIndices.forEach((index, i) => {
         const color = colors[colorIndex % colors.length];
-        
-        const leftData = processDatasetData(sortedData, leftIndex).data;
-        const rightData = processDatasetData(sortedData, rightIndex).data;
-        
         const dataset = createSingleDataset(
-          sortedData, leftIndex, i, 'y', color, 
-          `${headers[leftIndex]?.trim()} - ${headers[rightIndex]?.trim()}`,
-          diffOrder, rightData
+          sortedData, index, i, 'y', color, `Y轴${i + 1}`,
+          0
         );
         datasets.push(dataset);
         colorIndex++;
+      });
+      
+      y2Indices.forEach((index, i) => {
+        const color = colors[colorIndex % colors.length];
+        const dataset = createSingleDataset(
+          sortedData, index, yIndices.length + i, 'y1', color, `Y轴${yIndices.length + i + 1}`,
+          0
+        );
+        datasets.push(dataset);
+        colorIndex++;
+      });
+    } else {
+      const maxLength = Math.max(yIndices.length, y2Indices.length);
+      for (let i = 0; i < maxLength; i++) {
+        const leftIndex = yIndices[i];
+        const rightIndex = y2Indices[i];
+        
+        if (leftIndex !== undefined && rightIndex !== undefined) {
+          const color = colors[colorIndex % colors.length];
+          
+          const leftData = processDatasetData(sortedData, leftIndex).data;
+          const rightData = processDatasetData(sortedData, rightIndex).data;
+          
+          const dataset = createSingleDataset(
+            sortedData, leftIndex, i, 'y', color, 
+            `${headers[leftIndex]?.trim()} - ${headers[rightIndex]?.trim()}`,
+            diffOrder, rightData
+          );
+          datasets.push(dataset);
+          colorIndex++;
+        } else if (leftIndex !== undefined) {
+          const color = colors[colorIndex % colors.length];
+          const dataset = createSingleDataset(
+            sortedData, leftIndex, i, 'y', color, `Y轴${i + 1}`,
+            diffOrder
+          );
+          datasets.push(dataset);
+          colorIndex++;
+        } else if (rightIndex !== undefined) {
+          const color = colors[colorIndex % colors.length];
+          const dataset = createSingleDataset(
+            sortedData, rightIndex, i, 'y1', color, `Y轴${i + 1}`,
+            diffOrder
+          );
+          datasets.push(dataset);
+          colorIndex++;
+        }
       }
     }
   } else {
